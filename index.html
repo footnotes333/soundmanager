@@ -45,6 +45,16 @@ h2{font-size:13px;color:var(--mut);text-transform:uppercase;margin:4px 8px 8px;f
 .lk{border:0;background:none;color:var(--ac);font-size:16px;margin-top:24px}
 #inside{position:fixed;inset:0;background:var(--bg);display:none;z-index:20;padding:24px;text-align:center;padding-top:30vh}
 #inside.show{display:block}
+input{-webkit-user-select:text;user-select:text;font-size:17px;padding:13px;border-radius:12px;border:1px solid var(--tr);background:var(--card);color:var(--tx);width:100%;margin:6px 0}
+#inside{padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));text-align:left;overflow:auto}
+.pane{display:none}.pane.on{display:block}#chat.on{display:flex;flex-direction:column;height:calc(100dvh - 40px)}
+.btn{border:0;border-radius:12px;background:var(--ac);color:#fff;font-size:17px;padding:13px;width:100%;margin-top:6px}.btn.sec{background:var(--tr);color:var(--tx)}
+.bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.bar button{border:0;background:none;color:var(--ac);font-size:16px;margin-left:12px;padding:0}
+.add,.send{display:flex;gap:8px}.add input,.send input{margin:0}.add .btn,.send .btn{width:84px;margin:0}
+.ct{padding:14px;background:var(--card);border-radius:12px;margin-top:8px;font-size:17px}
+#msgs{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:8px 0}
+.m{max-width:78%;padding:9px 13px;border-radius:18px;font-size:16px;word-wrap:break-word}.m.me{align-self:flex-end;background:var(--ac);color:#fff}.m.th{align-self:flex-start;background:var(--card)}
+#aerr{color:#ff453a;min-height:20px;margin:8px 0;font-size:14px}
 </style>
 </head>
 <body>
@@ -76,9 +86,26 @@ h2{font-size:13px;color:var(--mut);text-transform:uppercase;margin:4px 8px 8px;f
 </div>
 
 <div id="inside">
-  <h1>You're in</h1>
-  <p style="color:var(--mut)">Secure space. The chat will live here in the next step.</p>
-  <button class="lk" id="lock">Lock</button>
+  <div class="pane on" id="auth">
+    <h1>Welcome</h1>
+    <input id="un" placeholder="Username" autocapitalize="none" autocorrect="off" autocomplete="username">
+    <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+    <div id="aerr"></div>
+    <button class="btn" id="login">Log in</button>
+    <button class="btn sec" id="signup">Create account</button>
+    <button class="lk" id="lock">Lock</button>
+  </div>
+  <div class="pane" id="home">
+    <div class="bar"><b id="me"></b><span><button id="out">Log out</button><button id="lock2">Lock</button></span></div>
+    <div class="add"><input id="who" placeholder="Friend's username" autocapitalize="none" autocorrect="off"><button class="btn" id="addb">Add</button></div>
+    <div id="aerr2" style="color:#ff453a;font-size:14px;min-height:20px;margin-top:6px"></div>
+    <div id="list"></div>
+  </div>
+  <div class="pane" id="chat">
+    <div class="bar"><button id="back" style="margin:0">‹ Back</button><b id="peer"></b><span></span></div>
+    <div id="msgs"></div>
+    <div class="send"><input id="txt" placeholder="Message"><button class="btn" id="sendb">Send</button></div>
+  </div>
 </div>
 
 <script>
@@ -153,6 +180,69 @@ function check(){
 function unlock(){$('#ov').classList.remove('show');$('#inside').classList.add('show')}
 $('#cancel').onclick=function(){$('#ov').classList.remove('show')};
 $('#lock').onclick=function(){$('#inside').classList.remove('show')};
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,doc,getDoc,setDoc,addDoc,deleteDoc,collection,query,orderBy,onSnapshot} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const cfg={apiKey:"AIzaSyCHyraoGgU2fB7LOrpfLZu97Onyg-0hZv8",authDomain:"soundmanager-app.firebaseapp.com",projectId:"soundmanager-app",storageBucket:"soundmanager-app.firebasestorage.app",messagingSenderId:"1043524666493",appId:"1:1043524666493:web:3826037c1385455cff9d14"};
+const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
+const Q=s=>document.querySelector(s),D='@soundmgr.app';
+let me=null,unsub=null,timers={};
+function pane(id){['auth','home','chat'].forEach(function(p){Q('#'+p).classList.toggle('on',p==id)})}
+function err(e,el){var m={'auth/invalid-credential':'Wrong username or password','auth/email-already-in-use':'Username already taken','auth/weak-password':'Password needs 6+ characters','auth/network-request-failed':'No connection','auth/invalid-api-key':'App key is wrong','auth/operation-not-allowed':'Email/Password sign-in is not switched on in Firebase'};Q(el||'#aerr').textContent=typeof e=='string'?e:(m[e.code]||e.code||'Something went wrong')}
+const nm=function(){return Q('#un').value.trim().toLowerCase()};
+Q('#login').onclick=async function(){try{await signInWithEmailAndPassword(auth,nm()+D,Q('#pw').value)}catch(e){err(e)}};
+Q('#signup').onclick=async function(){
+  var n=nm(),p=Q('#pw').value;
+  if(!/^[a-z0-9_]{3,20}$/.test(n))return err('Username: 3-20 letters, numbers or _');
+  if(p.length<6)return err('Password needs 6+ characters');
+  try{var c=await createUserWithEmailAndPassword(auth,n+D,p);await setDoc(doc(db,'usernames',n),{uid:c.user.uid})}catch(e){err(e)}
+};
+onAuthStateChanged(auth,function(u){
+  me=u;
+  if(u){Q('#me').textContent=u.email.split('@')[0];Q('#aerr').textContent='';pane('home');list()}else pane('auth');
+});
+Q('#out').onclick=function(){signOut(auth)};
+Q('#lock2').onclick=function(){Q('#lock').click()};
+document.addEventListener('visibilitychange',function(){if(document.hidden)Q('#lock').click()});
+function cons(){try{return JSON.parse(localStorage.getItem('c_'+me.uid)||'[]')}catch(e){return[]}}
+function list(){
+  var L=Q('#list');L.innerHTML='';
+  cons().forEach(function(c){var d=document.createElement('div');d.className='ct';d.textContent=c.n;d.onclick=function(){openChat(c)};L.appendChild(d)});
+}
+Q('#addb').onclick=async function(){
+  var n=Q('#who').value.trim().toLowerCase();Q('#aerr2').textContent='';
+  if(!n)return;
+  try{
+    var s=await getDoc(doc(db,'usernames',n));
+    if(!s.exists())return err('No user with that name','#aerr2');
+    var a=cons();if(!a.some(function(x){return x.n==n}))a.push({n:n,u:s.data().uid});
+    localStorage.setItem('c_'+me.uid,JSON.stringify(a));Q('#who').value='';list();
+  }catch(e){err(e,'#aerr2')}
+};
+function openChat(c){
+  Q('#peer').textContent=c.n;pane('chat');
+  var cid=[me.uid,c.u].sort().join('_');
+  window._cid=cid;
+  var q=query(collection(db,'chats',cid,'messages'),orderBy('ts'));
+  unsub=onSnapshot(q,function(snap){
+    var box=Q('#msgs');box.innerHTML='';
+    snap.forEach(function(d){
+      var m=d.data(),el=document.createElement('div');
+      el.className='m '+(m.from==me.uid?'me':'th');el.textContent=m.text;box.appendChild(el);
+      if(m.from!==me.uid&&!timers[d.id]){timers[d.id]=setTimeout(function(){deleteDoc(d.ref)},5000)}
+    });
+    box.scrollTop=box.scrollHeight;
+  });
+}
+Q('#back').onclick=function(){if(unsub)unsub();pane('home')};
+async function send(){
+  var t=Q('#txt').value.trim();if(!t)return;Q('#txt').value='';
+  try{await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,text:t,ts:Date.now()})}catch(e){}
+}
+Q('#sendb').onclick=send;
+Q('#txt').addEventListener('keydown',function(e){if(e.key=='Enter')send()});
 </script>
 </body>
 </html>
