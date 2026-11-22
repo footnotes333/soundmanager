@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Sound Manager">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
 <title>Sound Manager</title>
 <style>
 :root{--bg:#f2f2f7;--card:#fff;--tx:#111;--mut:#8a8a8e;--ac:#0a84ff;--tr:#d1d1d6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -192,7 +193,21 @@ import {getFirestore,doc,getDoc,setDoc,addDoc,deleteDoc,collection,query,orderBy
 const cfg={apiKey:"AIzaSyCHyraoGgU2fB7LOrpfLZu97Onyg-0hZv8",authDomain:"soundmanager-app.firebaseapp.com",projectId:"soundmanager-app",storageBucket:"soundmanager-app.firebasestorage.app",messagingSenderId:"1043524666493",appId:"1:1043524666493:web:3826037c1385455cff9d14"};
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
 const Q=s=>document.querySelector(s),D='@soundmgr.app';
-let me=null,unsub=null,timers={};
+let me=null,unsub=null,timers={},kp=null,myPub='';
+const b64=function(b){return btoa(String.fromCharCode.apply(null,new Uint8Array(b)))},ub=function(x){return Uint8Array.from(atob(x),function(c){return c.charCodeAt(0)})};
+function idb(){return new Promise(function(r,j){var q=indexedDB.open('sm',1);q.onupgradeneeded=function(){q.result.createObjectStore('k')};q.onsuccess=function(){r(q.result)};q.onerror=j})}
+async function kget(k){var d=await idb();return new Promise(function(r){var q=d.transaction('k').objectStore('k').get(k);q.onsuccess=function(){r(q.result)};q.onerror=function(){r()}})}
+async function kset(k,v){var d=await idb();return new Promise(function(r){var t=d.transaction('k','readwrite');t.objectStore('k').put(v,k);t.oncomplete=r})}
+async function ensureKeys(){
+  kp=await kget('k_'+me.uid);
+  if(!kp){kp=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},false,['deriveKey']);await kset('k_'+me.uid,kp)}
+  myPub=b64(await crypto.subtle.exportKey('raw',kp.publicKey));
+  await setDoc(doc(db,'usernames',me.email.split('@')[0]),{uid:me.uid,pub:myPub},{merge:true});
+}
+async function shared(pp){var pk=await crypto.subtle.importKey('raw',ub(pp),{name:'ECDH',namedCurve:'P-256'},false,[]);return crypto.subtle.deriveKey({name:'ECDH',public:pk},kp.privateKey,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function enc(key,t){var iv=crypto.getRandomValues(new Uint8Array(12));var c=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(t));return{iv:b64(iv),ct:b64(c)}}
+async function dec(key,m){try{return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(m.iv)},key,ub(m.ct)))}catch(e){return '\u{1F512} Cannot decrypt'}}
+async function safety(a,b){var h=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode([a,b].sort().join('|'))));return Array.from(h.slice(0,6)).map(function(x){return String(x).padStart(3,'0')}).join(' ')}
 function pane(id){['auth','home','chat'].forEach(function(p){Q('#'+p).classList.toggle('on',p==id)})}
 function err(e,el){var m={'auth/invalid-credential':'Wrong username or password','auth/email-already-in-use':'Username already taken','auth/weak-password':'Password needs 6+ characters','auth/network-request-failed':'No connection','auth/invalid-api-key':'App key is wrong','auth/operation-not-allowed':'Email/Password sign-in is not switched on in Firebase'};Q(el||'#aerr').textContent=typeof e=='string'?e:(m[e.code]||e.code||'Something went wrong')}
 const nm=function(){return Q('#un').value.trim().toLowerCase()};
@@ -201,11 +216,11 @@ Q('#signup').onclick=async function(){
   var n=nm(),p=Q('#pw').value;
   if(!/^[a-z0-9_]{3,20}$/.test(n))return err('Username: 3-20 letters, numbers or _');
   if(p.length<6)return err('Password needs 6+ characters');
-  try{var c=await createUserWithEmailAndPassword(auth,n+D,p);await setDoc(doc(db,'usernames',n),{uid:c.user.uid})}catch(e){err(e)}
+  try{await createUserWithEmailAndPassword(auth,n+D,p)}catch(e){err(e)}
 };
 onAuthStateChanged(auth,function(u){
   me=u;
-  if(u){Q('#me').textContent=u.email.split('@')[0];Q('#aerr').textContent='';pane('home');list()}else pane('auth');
+  if(u){Q('#me').textContent=u.email.split('@')[0];Q('#aerr').textContent='';pane('home');list();ensureKeys().catch(function(e){console.log(e)})}else pane('auth');
 });
 Q('#out').onclick=function(){signOut(auth)};
 Q('#lock2').onclick=function(){Q('#lock').click()};
@@ -225,25 +240,29 @@ Q('#addb').onclick=async function(){
     localStorage.setItem('c_'+me.uid,JSON.stringify(a));Q('#who').value='';list();
   }catch(e){err(e,'#aerr2')}
 };
-function openChat(c){
-  Q('#peer').textContent=c.n;pane('chat');
-  var cid=[me.uid,c.u].sort().join('_');
-  window._cid=cid;
+async function openChat(c){
+  Q('#peer').textContent=c.n;pane('chat');var box=Q('#msgs');box.innerHTML='';window._key=null;
+  if(!kp)await ensureKeys();
+  var s=await getDoc(doc(db,'usernames',c.n));
+  if(!s.exists()||!s.data().pub){box.textContent='This user has not opened the updated app yet.';return}
+  var pp=s.data().pub,key=await shared(pp);window._key=key;
+  Q('#peer').onclick=async function(){alert('Safety code\n\n'+await safety(myPub,pp)+'\n\nCompare this with '+c.n+'. If it matches on both phones, nobody is intercepting.')};
+  var cid=[me.uid,c.u].sort().join('_');window._cid=cid;
   var q=query(collection(db,'chats',cid,'messages'),orderBy('ts'));
-  unsub=onSnapshot(q,function(snap){
-    var box=Q('#msgs');box.innerHTML='';
-    snap.forEach(function(d){
-      var m=d.data(),el=document.createElement('div');
-      el.className='m '+(m.from==me.uid?'me':'th');el.textContent=m.text;box.appendChild(el);
-      if(m.from!==me.uid&&!timers[d.id]){timers[d.id]=setTimeout(function(){deleteDoc(d.ref)},5000)}
+  unsub=onSnapshot(q,async function(snap){
+    var items=await Promise.all(snap.docs.map(async function(d){var m=d.data();return{d:d,m:m,t:m.ct?await dec(key,m):null}}));
+    box.innerHTML='';
+    items.forEach(function(x){
+      if(x.t!==null){var el=document.createElement('div');el.className='m '+(x.m.from==me.uid?'me':'th');el.textContent=x.t;box.appendChild(el)}
+      if(x.m.from!==me.uid&&!timers[x.d.id]){timers[x.d.id]=setTimeout(function(){deleteDoc(x.d.ref)},5000)}
     });
     box.scrollTop=box.scrollHeight;
   });
 }
 Q('#back').onclick=function(){if(unsub)unsub();pane('home')};
 async function send(){
-  var t=Q('#txt').value.trim();if(!t)return;Q('#txt').value='';
-  try{await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,text:t,ts:Date.now()})}catch(e){}
+  var t=Q('#txt').value.trim();if(!t||!window._key)return;Q('#txt').value='';
+  try{var e=await enc(window._key,t);await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,iv:e.iv,ct:e.ct,ts:Date.now()})}catch(x){}
 }
 Q('#sendb').onclick=send;
 Q('#txt').addEventListener('keydown',function(e){if(e.key=='Enter')send()});
