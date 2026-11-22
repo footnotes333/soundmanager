@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="Sound Manager">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
 <title>Sound Manager</title>
 <style>
 :root{--bg:#f2f2f7;--card:#fff;--tx:#111;--mut:#8a8a8e;--ac:#0a84ff;--tr:#d1d1d6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -104,6 +105,7 @@ input{-webkit-user-select:text;user-select:text;font-size:17px;padding:13px;bord
     <div class="bar"><b id="me"></b><span><button id="out">Log out</button><button id="lock2">Lock</button></span></div>
     <div class="add"><input id="who" placeholder="Friend's username" autocapitalize="none" autocorrect="off"><button class="btn" id="addb">Add</button></div>
     <div id="aerr2" style="color:#ff453a;font-size:14px;min-height:20px;margin-top:6px"></div>
+    <button class="btn sec" id="notif" style="margin-top:6px;display:none">Enable sound alerts</button>
     <div id="list"></div>
   </div>
   <div class="pane" id="chat">
@@ -189,7 +191,8 @@ $('#lock').onclick=function(){$('#inside').classList.remove('show')};
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {getFirestore,doc,getDoc,setDoc,addDoc,deleteDoc,collection,query,orderBy,onSnapshot} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getFirestore,doc,getDoc,setDoc,arrayUnion,addDoc,deleteDoc,collection,query,orderBy,onSnapshot} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getMessaging,getToken} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 const cfg={apiKey:"AIzaSyCHyraoGgU2fB7LOrpfLZu97Onyg-0hZv8",authDomain:"soundmanager-app.firebaseapp.com",projectId:"soundmanager-app",storageBucket:"soundmanager-app.firebasestorage.app",messagingSenderId:"1043524666493",appId:"1:1043524666493:web:3826037c1385455cff9d14"};
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
 const Q=s=>document.querySelector(s),D='@soundmgr.app';
@@ -220,9 +223,24 @@ Q('#signup').onclick=async function(){
 };
 onAuthStateChanged(auth,function(u){
   me=u;
-  if(u){Q('#me').textContent=u.email.split('@')[0];Q('#aerr').textContent='';pane('home');list();ensureKeys().catch(function(e){console.log(e)})}else pane('auth');
+  if(u){Q('#me').textContent=u.email.split('@')[0];Q('#aerr').textContent='';pane('home');list();chkNotif();ensureKeys().catch(function(e){console.log(e)})}else pane('auth');
 });
 Q('#out').onclick=function(){signOut(auth)};
+const VAPID="BIVIKDJQj0D71r8AalIlmb0ffcQWfngzl748gnt2QPGMY-7c-0x66nwHguNyAMoiCozPKFgGK0zHOCJmaTg1zg8";
+async function enableAlerts(){
+  try{
+    var p=await Notification.requestPermission();if(p!=='granted')return;
+    var reg=await navigator.serviceWorker.register('firebase-messaging-sw.js');await navigator.serviceWorker.ready;
+    var t=await getToken(getMessaging(app),{vapidKey:VAPID,serviceWorkerRegistration:reg});
+    await setDoc(doc(db,'tokens',me.uid),{list:arrayUnion(t)},{merge:true});
+    Q('#notif').style.display='none';
+  }catch(e){Q('#aerr2').textContent='Alerts: '+(e.code||e.message)}
+}
+function chkNotif(){
+  if(!('Notification' in window)||!('serviceWorker' in navigator))return;
+  if(Notification.permission==='granted'){enableAlerts()}else if(Notification.permission==='default'){Q('#notif').style.display=''}
+}
+Q('#notif').onclick=enableAlerts;
 Q('#lock2').onclick=function(){Q('#lock').click()};
 document.addEventListener('visibilitychange',function(){if(document.hidden)Q('#lock').click()});
 function cons(){try{return JSON.parse(localStorage.getItem('c_'+me.uid)||'[]')}catch(e){return[]}}
