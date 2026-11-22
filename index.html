@@ -258,20 +258,31 @@ Q('#addb').onclick=async function(){
     localStorage.setItem('c_'+me.uid,JSON.stringify(a));Q('#who').value='';list();
   }catch(e){err(e,'#aerr2')}
 };
+var peerName='',peerPub='',gone={};
+async function decN(key,m){try{return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(m.iv)},key,ub(m.ct)))}catch(e){return null}}
+async function getKey(){
+  var s=await getDoc(doc(db,'usernames',peerName));
+  if(!s.exists()||!s.data().pub)return null;
+  if(s.data().pub!==peerPub||!window._key){peerPub=s.data().pub;window._key=await shared(peerPub)}
+  return window._key;
+}
 async function openChat(c){
-  Q('#peer').textContent=c.n;pane('chat');var box=Q('#msgs');box.innerHTML='';window._key=null;
+  peerName=c.n;peerPub='';window._key=null;
+  Q('#peer').textContent=c.n;pane('chat');var box=Q('#msgs');box.innerHTML='';
   if(!kp)await ensureKeys();
-  var s=await getDoc(doc(db,'usernames',c.n));
-  if(!s.exists()||!s.data().pub){box.textContent='This user has not opened the updated app yet.';return}
-  var pp=s.data().pub,key=await shared(pp);window._key=key;
-  Q('#peer').onclick=async function(){alert('Safety code\n\n'+await safety(myPub,pp)+'\n\nCompare this with '+c.n+'. If it matches on both phones, nobody is intercepting.')};
+  var key=await getKey();
+  if(!key){box.textContent='This user has not opened the updated app yet.';return}
+  Q('#peer').onclick=async function(){alert('Safety code\n\n'+await safety(myPub,peerPub)+'\n\nCompare this with '+c.n+'. If it matches on both phones, nobody is intercepting.')};
   var cid=[me.uid,c.u].sort().join('_');window._cid=cid;
   var q=query(collection(db,'chats',cid,'messages'),orderBy('ts'));
   unsub=onSnapshot(q,async function(snap){
-    var items=await Promise.all(snap.docs.map(async function(d){var m=d.data();return{d:d,m:m,t:m.ct?await dec(key,m):null}}));
+    var run=function(){return Promise.all(snap.docs.map(async function(d){var m=d.data();return{d:d,m:m,t:m.ct?await decN(window._key,m):null}}))};
+    var items=await run();
+    if(items.some(function(x){return x.m.ct&&x.t===null})){await getKey();items=await run()}
     box.innerHTML='';
     items.forEach(function(x){
-      if(x.t!==null){var el=document.createElement('div');el.className='m '+(x.m.from==me.uid?'me':'th');el.textContent=x.t;box.appendChild(el)}
+      if(x.t===null){if(!gone[x.d.id]){gone[x.d.id]=1;deleteDoc(x.d.ref)}return}
+      var el=document.createElement('div');el.className='m '+(x.m.from==me.uid?'me':'th');el.textContent=x.t;box.appendChild(el);
       if(x.m.from!==me.uid&&!timers[x.d.id]){timers[x.d.id]=setTimeout(function(){deleteDoc(x.d.ref)},5000)}
     });
     box.scrollTop=box.scrollHeight;
@@ -279,10 +290,13 @@ async function openChat(c){
 }
 Q('#back').onclick=function(){if(unsub)unsub();pane('home')};
 async function send(){
-  var t=Q('#txt').value.trim();if(!t||!window._key)return;Q('#txt').value='';
-  try{var e=await enc(window._key,t);await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,iv:e.iv,ct:e.ct,ts:Date.now()})}catch(x){}
+  var t=Q('#txt').value.trim();if(!t)return;
+  try{var key=await getKey();if(!key)return;Q('#txt').value='';var e=await enc(key,t);await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,iv:e.iv,ct:e.ct,ts:Date.now()})}catch(x){}
 }
 Q('#sendb').onclick=send;
+function fit(){var v=window.visualViewport;if(!v)return;var e=Q('#inside');e.style.bottom='auto';e.style.top=v.offsetTop+'px';e.style.height=v.height+'px';e.style.paddingBottom=(v.height<window.innerHeight-120)?'8px':'';window.scrollTo(0,0);var b=Q('#msgs');b.scrollTop=b.scrollHeight}
+if(window.visualViewport){visualViewport.addEventListener('resize',fit);visualViewport.addEventListener('scroll',fit)}
+Q('#txt').addEventListener('focus',function(){setTimeout(fit,300)});
 Q('#txt').addEventListener('keydown',function(e){if(e.key=='Enter')send()});
 </script>
 </body>
