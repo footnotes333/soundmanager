@@ -46,8 +46,12 @@ h2{font-size:13px;color:var(--mut);text-transform:uppercase;margin:4px 8px 8px;f
 #inside{position:fixed;inset:0;background:var(--bg);display:none;z-index:20;padding:24px;text-align:center;padding-top:30vh}
 #inside.show{display:block}
 input{-webkit-user-select:text;user-select:text;font-size:17px;padding:13px;border-radius:12px;border:1px solid var(--tr);background:var(--card);color:var(--tx);width:100%;margin:6px 0}
-#inside{padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));text-align:left;overflow:auto}
-.pane{display:none}.pane.on{display:block}#chat.on{display:flex;flex-direction:column;height:calc(100dvh - 40px)}
+#inside{padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));text-align:left;overflow:hidden;overscroll-behavior:none}
+#inside.show{display:flex;flex-direction:column}
+.pane{display:none}.pane.on{display:block}
+#auth.on,#home.on{overflow:auto;flex:1;min-height:0}
+#chat.on{display:flex;flex-direction:column;flex:1;min-height:0}
+#msgs{min-height:0}
 .btn{border:0;border-radius:12px;background:var(--ac);color:#fff;font-size:17px;padding:13px;width:100%;margin-top:6px}.btn.sec{background:var(--tr);color:var(--tx)}
 .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.bar button{border:0;background:none;color:var(--ac);font-size:16px;margin-left:12px;padding:0}
 .add,.send{display:flex;gap:8px}.add input,.send input{margin:0}.add .btn,.send .btn{width:84px;margin:0}
