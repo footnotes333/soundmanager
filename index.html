@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sound Manager">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Sound Manager</title>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--tx:#111;--mut:#8a8a8e;--ac:#0a84ff;--tr:#d1d1d6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--card:#1c1c1e;--tx:#f5f5f7;--mut:#8e8e93;--tr:#3a3a3c}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Helvetica Neue",Arial,sans-serif;padding:16px 16px 40px}
+h1{font-size:30px;margin:8px 4px 0}
+.sub{color:var(--mut);font-size:13px;margin:2px 4px 16px;display:inline-block;padding:6px 4px}
+.card{background:var(--card);border-radius:16px;padding:6px 16px;margin-bottom:16px}
+.row{padding:12px 0;border-bottom:1px solid var(--tr)}.row:last-child{border:0}
+.lab{display:flex;justify-content:space-between;font-size:15px;margin-bottom:10px}.lab span:last-child{color:var(--mut)}
+.sl{position:relative;height:30px;touch-action:none}
+.sl .t{position:absolute;top:13px;left:0;right:0;height:5px;border-radius:3px;background:var(--tr)}
+.sl .f{position:absolute;top:13px;left:0;height:5px;border-radius:3px;background:var(--ac)}
+.sl .k{position:absolute;top:2px;width:26px;height:26px;margin-left:-13px;border-radius:50%;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+h2{font-size:13px;color:var(--mut);text-transform:uppercase;margin:4px 8px 8px;font-weight:600}
+.eq{display:flex;justify-content:space-between;padding:14px 0}
+.band{width:18%;text-align:center;font-size:12px;color:var(--mut)}
+.v{position:relative;height:150px;touch-action:none;margin-bottom:6px}
+.v .t{position:absolute;left:50%;margin-left:-2px;width:5px;top:0;bottom:0;border-radius:3px;background:var(--tr)}
+.v .f{position:absolute;left:50%;margin-left:-2px;width:5px;bottom:0;border-radius:3px;background:var(--ac)}
+.v .k{position:absolute;left:50%;margin-left:-13px;width:26px;height:26px;margin-bottom:-13px;border-radius:50%;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+.pre{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px}
+.pre button{border:0;background:var(--tr);color:var(--tx);padding:9px 16px;border-radius:20px;font-size:14px;white-space:nowrap}
+.pre button.on{background:var(--ac);color:#fff}
+.sw{display:flex;justify-content:space-between;align-items:center;padding:14px 0}
+.tg{width:50px;height:30px;border-radius:15px;background:var(--tr);position:relative;transition:.2s}
+.tg::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;border-radius:50%;background:#fff;transition:.2s}
+.tg.on{background:#34c759}.tg.on::after{left:22px}
+#ov{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10;padding:24px}
+#ov.show{display:flex}
+.dots{display:flex;gap:16px;margin:20px 0 8px}.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--tx)}.dots i.f{background:var(--tx)}
+#msg{color:var(--mut);height:20px;font-size:14px}
+.pad{display:grid;grid-template-columns:repeat(3,76px);gap:14px;margin-top:20px}
+.pad button{height:76px;border-radius:50%;border:0;background:var(--card);color:var(--tx);font-size:28px}
+.pad button:active{background:var(--tr)}
+.lk{border:0;background:none;color:var(--ac);font-size:16px;margin-top:24px}
+#inside{position:fixed;inset:0;background:var(--bg);display:none;z-index:20;padding:24px;text-align:center;padding-top:30vh}
+#inside.show{display:block}
+</style>
+</head>
+<body>
+<h1>Sound</h1>
+<div class="sub" id="secret">Audio manager</div>
+
+<h2>Volume</h2>
+<div class="card" id="vols"></div>
+
+<h2>Equaliser</h2>
+<div class="card">
+  <div class="pre" id="pre"></div>
+  <div class="eq" id="eq"></div>
+</div>
+
+<h2>Enhancements</h2>
+<div class="card">
+  <div class="sw"><span>Bass boost</span><div class="tg"></div></div>
+  <div class="sw"><span>Virtual surround</span><div class="tg"></div></div>
+  <div class="sw"><span>Loudness enhancer</span><div class="tg on"></div></div>
+</div>
+
+<div id="ov">
+  <div id="ttl" style="font-size:20px">Enter PIN</div>
+  <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+  <div id="msg"></div>
+  <div class="pad" id="pad"></div>
+  <button class="lk" id="cancel">Cancel</button>
+</div>
+
+<div id="inside">
+  <h1>You're in</h1>
+  <p style="color:var(--mut)">Secure space. The chat will live here in the next step.</p>
+  <button class="lk" id="lock">Lock</button>
+</div>
+
+<script>
+var $=function(s){return document.querySelector(s)};
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return window['_'+k]=v===undefined?window['_'+k]:v}}
+function drag(el,vert,cb){
+  function mv(e){var r=el.getBoundingClientRect();var p=vert?1-(e.clientY-r.top)/r.height:(e.clientX-r.left)/r.width;cb(Math.max(0,Math.min(1,p)))}
+  el.addEventListener('pointerdown',function(e){el.setPointerCapture(e.pointerId);mv(e);el.onpointermove=mv});
+  el.addEventListener('pointerup',function(){el.onpointermove=null});
+}
+var vols=[["Ringtone",70],["Calls",55],["Notifications",40],["Alarm",80],["Media",60],["System sounds",30],["Vibration intensity",50]];
+vols.forEach(function(v){
+  var d=document.createElement('div');d.className='row';
+  d.innerHTML='<div class="lab"><span>'+v[0]+'</span><span>'+v[1]+'%</span></div><div class="sl"><div class="t"></div><div class="f"></div><div class="k"></div></div>';
+  $('#vols').appendChild(d);
+  var f=d.querySelector('.f'),k=d.querySelector('.k'),n=d.querySelector('.lab span:last-child'),s=d.querySelector('.sl');
+  function set(p){f.style.width=p*100+'%';k.style.left=p*100+'%';n.textContent=Math.round(p*100)+'%'}
+  set(v[1]/100);drag(s,false,function(p){set(p);if(navigator.vibrate)navigator.vibrate(5)});
+});
+var bands=["60Hz","230Hz","910Hz","4kHz","14kHz"];
+var presets={Flat:[50,50,50,50,50],Bass:[85,70,50,45,40],Rock:[70,55,40,60,75],Pop:[40,60,70,60,45],Vocal:[30,45,75,70,50],Treble:[35,40,50,75,90]};
+var setters=[];
+bands.forEach(function(b,i){
+  var d=document.createElement('div');d.className='band';
+  d.innerHTML='<div class="v"><div class="t"></div><div class="f"></div><div class="k"></div></div>'+b;
+  $('#eq').appendChild(d);
+  var f=d.querySelector('.f'),k=d.querySelector('.k');
+  function set(p){f.style.height=p*100+'%';k.style.bottom=p*100+'%'}
+  setters.push(set);set(.5);
+  drag(d.querySelector('.v'),true,function(p){set(p);document.querySelectorAll('#pre button').forEach(function(x){x.classList.remove('on')})});
+});
+Object.keys(presets).forEach(function(n,i){
+  var b=document.createElement('button');b.textContent=n;if(i==0)b.className='on';
+  b.onclick=function(){document.querySelectorAll('#pre button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');presets[n].forEach(function(v,j){setters[j](v/100)})};
+  $('#pre').appendChild(b);
+});
+document.querySelectorAll('.tg').forEach(function(t){t.onclick=function(){t.classList.toggle('on')}});
+
+// Hidden entrance: long-press the small subtitle
+var timer;
+var sec=$('#secret');
+function startP(){timer=setTimeout(openPin,1000)}function stopP(){clearTimeout(timer)}
+sec.addEventListener('touchstart',startP,{passive:true});sec.addEventListener('touchend',stopP);sec.addEventListener('touchmove',stopP);
+sec.addEventListener('mousedown',startP);sec.addEventListener('mouseup',stopP);sec.addEventListener('mouseleave',stopP);
+
+var entry='',first='',mode='';
+"123456789 0<".split('').forEach(function(c){
+  var b=document.createElement('button');
+  if(c==' '){b.style.visibility='hidden'}else{b.textContent=c=='<'?'⌫':c;b.onclick=function(){press(c)}}
+  $('#pad').appendChild(b);
+});
+function draw(){document.querySelectorAll('#dots i').forEach(function(d,i){d.className=i<entry.length?'f':''})}
+function openPin(){
+  entry='';first='';draw();$('#msg').textContent='';
+  mode=store('pin')?'verify':'create';
+  $('#ttl').textContent=mode=='create'?'Create a 4-digit PIN':'Enter PIN';
+  $('#ov').classList.add('show');
+}
+function press(c){
+  if(c=='<'){entry=entry.slice(0,-1);draw();return}
+  if(entry.length>=4)return;
+  entry+=c;draw();
+  if(entry.length==4)setTimeout(check,150);
+}
+function check(){
+  if(mode=='create'){first=entry;entry='';mode='confirm';$('#ttl').textContent='Confirm PIN';draw();return}
+  if(mode=='confirm'){
+    if(entry===first){store('pin',entry);unlock()}else{$('#msg').textContent="PINs didn't match";entry='';first='';mode='create';$('#ttl').textContent='Create a 4-digit PIN';draw()}
+    return}
+  if(entry===store('pin'))unlock();else{$('#msg').textContent='Wrong PIN';entry='';draw()}
+}
+function unlock(){$('#ov').classList.remove('show');$('#inside').classList.add('show')}
+$('#cancel').onclick=function(){$('#ov').classList.remove('show')};
+$('#lock').onclick=function(){$('#inside').classList.remove('show')};
+</script>
+</body>
+</html>
