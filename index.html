@@ -89,6 +89,8 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
 .btn.mute{background:#241a1a;color:#d4908b;border:1px solid #3d2626}
 .ct{display:flex;align-items:center;gap:12px}.av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#1e90ff,#8a5cff);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
 #set.on{overflow:auto;flex:1;min-height:0}
+.ic2{border:0;background:var(--card);color:var(--ac);width:44px;height:48px;border-radius:12px;flex:none;line-height:0;padding:0}.ic2 svg{width:22px;height:22px}.ic2.rec{background:#4a2323;color:#e8a6a1}
+.m a{word-break:break-all;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -144,7 +146,7 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
     <div class="bar"><button id="back" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b id="peer"></b><span class="rt"><select id="tmr"><option value="1">Instant</option><option value="5">5 sec</option><option value="60">1 min</option><option value="0">Off</option></select><button class="ic lk-ic" id="lock3"></button></span></div>
     <div id="st"></div>
     <div id="msgs"></div>
-    <div class="send"><input id="txt" placeholder="Message"><button class="btn" id="sendb">Send</button></div>
+    <div class="send"><button class="ic2" id="photo"></button><button class="ic2" id="mic"></button><input id="txt" placeholder="Message"><button class="btn" id="sendb">Send</button><input type="file" id="pf" accept="image/*" hidden></div>
   </div>
 </div>
 
@@ -246,7 +248,7 @@ const cfg={apiKey:"AIzaSyCHyraoGgU2fB7LOrpfLZu97Onyg-0hZv8",authDomain:"soundman
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
 const Q=s=>document.querySelector(s),D='@soundmgr.app';
 let me=null,unsub=null,timers={},kp=null,myPub='';
-const b64=function(b){return btoa(String.fromCharCode.apply(null,new Uint8Array(b)))},ub=function(x){return Uint8Array.from(atob(x),function(c){return c.charCodeAt(0)})};
+const b64=function(b){var u=new Uint8Array(b),r='';for(var i=0;i<u.length;i+=8192)r+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(r)},ub=function(x){return Uint8Array.from(atob(x),function(c){return c.charCodeAt(0)})};
 function idb(){return new Promise(function(r,j){var q=indexedDB.open('sm',1);q.onupgradeneeded=function(){q.result.createObjectStore('k')};q.onsuccess=function(){r(q.result)};q.onerror=j})}
 async function kget(k){var d=await idb();return new Promise(function(r){var q=d.transaction('k').objectStore('k').get(k);q.onsuccess=function(){r(q.result)};q.onerror=function(){r()}})}
 async function kset(k,v){var d=await idb();return new Promise(function(r){var t=d.transaction('k','readwrite');t.objectStore('k').put(v,k);t.oncomplete=r})}
@@ -327,7 +329,10 @@ async function openChat(c){
   var tk='tm_'+cid;Q('#tmr').value=localStorage.getItem(tk)||'5';Q('#tmr').onchange=function(){localStorage.setItem(tk,Q('#tmr').value)};
   var q=query(collection(db,'chats',cid,'messages'),orderBy('ts'));
   unsub=onSnapshot(q,async function(snap){
-    var run=function(){return Promise.all(snap.docs.map(async function(d){var m=d.data();return{d:d,m:m,t:m.ct?await decN(window._key,m):null}}))};
+    var run=function(){return Promise.all(snap.docs.map(async function(d){var m=d.data(),t=null;
+      if(m.ct&&m.kind){if(!mcache[d.id]){var bb=await decB(window._key,m);if(bb)mcache[d.id]=URL.createObjectURL(new Blob([bb],{type:m.mime||'application/octet-stream'}))}t=mcache[d.id]?{u:mcache[d.id],k:m.kind}:null}
+      else if(m.ct)t=await decN(window._key,m);
+      return{d:d,m:m,t:t}}))};
     var items=await run();
     if(items.some(function(x){return x.m.ct&&x.t===null})){await getKey();items=await run()}
     box.innerHTML='';
@@ -335,14 +340,19 @@ async function openChat(c){
       if(x.t===null){if(!gone[x.d.id]){gone[x.d.id]=1;deleteDoc(x.d.ref)}return}
       var mine=x.m.from==me.uid,el=document.createElement('div');el.className='m '+(mine?'me':'th');
       var n1=document.createElement('div');n1.className='nm';n1.textContent=mine?'You':peerName;
-      var t1=document.createElement('div');t1.textContent=x.t;
-      var t2=document.createElement('div');t2.className='tm'+(mine&&x.m.seen?' sn':'');t2.textContent=ts(x.m.ts)+(mine?(x.m.seen?' \u2713\u2713':' \u2713'):'');
+      var lp,t1=document.createElement('div');
+      if(typeof x.t==='object'){if(x.t.k=='i'){var im=new Image();im.src=x.t.u;im.style.cssText='max-width:100%;border-radius:12px;display:block';t1.appendChild(im)}else{var au=document.createElement('audio');au.controls=true;au.src=x.t.u;au.style.width='210px';t1.appendChild(au)}}
+      else linkify(t1,x.t);
+      var t2=document.createElement('div');t2.className='tm'+(mine&&x.m.seen?' sn':'');t2.textContent=(x.m.keep?'\u{1F4CC} ':'')+ts(x.m.ts)+(mine?(x.m.seen?' \u2713\u2713':' \u2713'):'');
       el.appendChild(n1);el.appendChild(t1);el.appendChild(t2);box.appendChild(el);
+      el.addEventListener('touchstart',function(){lp=setTimeout(function(){updateDoc(x.d.ref,{keep:!x.m.keep}).catch(function(){});if(navigator.vibrate)navigator.vibrate(15)},600)},{passive:true});
+      el.addEventListener('touchend',function(){clearTimeout(lp)});el.addEventListener('touchmove',function(){clearTimeout(lp)});
       if(!mine){
         if(!x.m.seen&&!marked[x.d.id]){marked[x.d.id]=1;updateDoc(x.d.ref,{seen:Date.now()}).catch(function(){})}
-        var sec=+Q('#tmr').value;
-        if(sec>0&&!timers[x.d.id]){timers[x.d.id]=setTimeout(function(){deleteDoc(x.d.ref)},sec*1000)}
+        var sec=+Q('#tmr').value;if(sec>0&&x.m.kind)sec=Math.max(sec,x.m.kind=='a'?300:30);
+        if(sec>0&&!x.m.keep&&!timers[x.d.id]){timers[x.d.id]=setTimeout(function(){delete timers[x.d.id];if(!keepMap[x.d.id])deleteDoc(x.d.ref)},sec*1000)}
       }
+      keepMap[x.d.id]=!!x.m.keep;
     });
     box.scrollTop=box.scrollHeight;
   });
@@ -361,7 +371,7 @@ var pres={},unP=null,marked={},lt=0;
 function ts(t){var d=new Date(t),h=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});return d.toDateString()==new Date().toDateString()?h:d.toLocaleDateString([],{day:'numeric',month:'short'})+' '+h}
 function beat(x){if(!me)return;setDoc(doc(db,'presence',me.uid),Object.assign({last:Date.now()},x||{}),{merge:true}).catch(function(){})}
 setInterval(function(){if(me&&!document.hidden&&document.getElementById('inside').classList.contains('show'))beat()},20000);
-function stat(){var e=Q('#st'),n=Date.now();if(!window._peerUid||!me)return;e.textContent=(pres.to==me.uid&&n-(pres.typing||0)<4000)?'typing\u2026':(n-(pres.last||0)<45000?'online':(pres.last?'last seen '+ts(pres.last):'offline'))}
+function stat(){var e=Q('#st'),n=Date.now();if(!window._peerUid||!me||recOn)return;e.textContent=(pres.to==me.uid&&n-(pres.typing||0)<4000)?'typing\u2026':(n-(pres.last||0)<45000?'online':(pres.last?'last seen '+ts(pres.last):'offline'))}
 setInterval(stat,1500);
 Q('#txt').addEventListener('input',function(){var n=Date.now();if(n-lt>2000){lt=n;beat({to:window._peerUid,typing:n})}});
 Q('#chpin').onclick=function(){
@@ -391,6 +401,37 @@ window.afterUnlock=function(){
   if(!c){try{c=JSON.parse(localStorage.getItem('lc_'+me.uid)||'null')}catch(e){}}
   if(c&&cons().some(function(x){return x.n==c.n}))openChat(c);
 };
+var mcache={},keepMap={},recOn=false,rec=null,chunks=[],rsz=0,rt0=0,rtm=null,cancelRec=false;
+function linkify(el,t){String(t).split(/(https?:\/\/[^\s]+)/g).forEach(function(p,i){if(i%2){var a=document.createElement('a');a.href=p;a.target='_blank';a.rel='noopener noreferrer';a.textContent=p;a.style.color='#bfe0ff';el.appendChild(a)}else el.appendChild(document.createTextNode(p))})}
+async function encB(key,buf){var iv=crypto.getRandomValues(new Uint8Array(12));var c=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,buf);return{iv:b64(iv),ct:b64(c)}}
+async function decB(key,m){try{return await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(m.iv)},key,ub(m.ct))}catch(e){return null}}
+async function sendMedia(kind,buf,mime){
+  try{var key=await getKey();if(!key)return;var e=await encB(key,buf);if(e.ct.length>950000){Q('#st').textContent='Too large to send';return}
+    await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,iv:e.iv,ct:e.ct,kind:kind,mime:mime,ts:Date.now()})}catch(x){Q('#st').textContent='Send failed'}
+}
+function pickPhoto(f){if(!f)return;var img=new Image(),u=URL.createObjectURL(f);img.onload=function(){var r=Math.min(1,720/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(async function(b){await sendMedia('i',await b.arrayBuffer(),'image/jpeg')},'image/jpeg',.6)};img.src=u}
+async function micToggle(){
+  if(recOn){rec.stop();return}
+  if(!window._key)return;
+  try{
+    var st=await navigator.mediaDevices.getUserMedia({audio:true});
+    var mime=MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':'audio/webm;codecs=opus';
+    rec=new MediaRecorder(st,{mimeType:mime,audioBitsPerSecond:16000});chunks=[];rsz=0;rt0=Date.now();recOn=true;cancelRec=false;Q('#mic').classList.add('rec');
+    rec.ondataavailable=function(e){if(e.data.size){chunks.push(e.data);rsz+=e.data.size;if(rsz>640000&&rec.state=='recording')rec.stop()}};
+    rec.onstop=async function(){clearInterval(rtm);recOn=false;Q('#mic').classList.remove('rec');st.getTracks().forEach(function(t){t.stop()});Q('#st').textContent='';
+      if(cancelRec){cancelRec=false;return}
+      var b=new Blob(chunks,{type:mime.split(';')[0]});if(b.size<800)return;await sendMedia('a',await b.arrayBuffer(),b.type)};
+    rec.start(1000);
+    rtm=setInterval(function(){var n=Math.floor((Date.now()-rt0)/1000);Q('#st').textContent='Recording '+Math.floor(n/60)+':'+String(n%60).padStart(2,'0')+' \u2014 tap mic to send';if(n>=300&&rec.state=='recording')rec.stop()},500);
+  }catch(e){Q('#st').textContent='Microphone not allowed'}
+}
+var SV='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
+Q('#photo').innerHTML=SV+'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+Q('#mic').innerHTML=SV+'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+Q('#photo').onclick=function(){Q('#pf').click()};
+Q('#pf').onchange=function(){pickPhoto(this.files[0]);this.value=''};
+Q('#mic').onclick=micToggle;
+Q('#lock').addEventListener('click',function(){if(recOn&&rec){cancelRec=true;rec.stop()}});
 </script>
 </body>
 </html>
