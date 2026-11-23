@@ -113,13 +113,22 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
 .snd{display:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--ac);color:#fff;line-height:0;padding:0;flex:none}.snd svg{width:22px;height:22px}
 .send.has .snd{display:block}.send.has #mic{display:none}
 .sel{background:var(--bg);color:var(--tx);border:1px solid var(--tr);border-radius:8px;padding:6px;font-size:15px}
+body{padding-bottom:40px}
+html.in body>*:not(#inside):not(#ov):not(#decoy):not(script){visibility:hidden}
+.send .ic2{width:42px;height:42px;border-radius:50%}.pill{padding:0 14px}.snd{display:block!important}.send:not(.has) .snd{opacity:.45}.send.has #mic{display:block}
+.hero{background:linear-gradient(135deg,#0f2447,#2a1555 60%,#3d0f45);border:1px solid #2b2b4a;border-radius:18px;padding:14px;margin-bottom:16px}
+.hl{display:flex;justify-content:space-between;align-items:center}.hero canvas{width:100%;height:110px;display:block;margin-top:10px}
+.vu{display:flex;gap:4px;align-items:flex-end;height:38px}.vu i{display:block;width:9px;height:40%;background:linear-gradient(#ff6b6b,#ffd666 35%,#4cd98a);border-radius:3px;transition:height .12s}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}.tile{border-radius:14px;padding:14px;font-weight:600;border:2px solid transparent;color:#fff;text-align:left;font-size:16px}.tile small{display:block;font-weight:400;opacity:.8;font-size:12px;margin-top:2px}.tile.on{border-color:#fff}
 </style>
 </head>
 <body>
 <div class="hd"><h1>Sound</h1><div class="sub" id="secret">Audio manager</div></div>
+<div class="hero"><div class="hl"><div><div class="mut" style="font-size:11px;letter-spacing:1px">MASTER OUTPUT</div><div style="font-size:21px;font-weight:700;margin-top:2px">Speaker &middot; 48 kHz</div></div><div class="vu"><i id="vl"></i><i id="vr"></i></div></div><canvas id="spec" width="640" height="130"></canvas></div>
+<h2>Sound profiles</h2><div class="tiles" id="tiles"></div>
 <h2>Equaliser</h2>
 <div class="card"><div class="pre" id="pre"></div><div class="eq" id="eq"></div>
-<svg viewBox="0 0 300 60" preserveAspectRatio="none" style="width:100%;height:60px;background:#101012;border-radius:8px"><path id="cp" fill="none" stroke="#1e90ff" stroke-width="2"/></svg>
+<svg viewBox="0 0 300 60" preserveAspectRatio="none" style="width:100%;height:60px;background:#101012;border-radius:8px"><defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5cff"/><stop offset="1" stop-color="#1e90ff" stop-opacity="0"/></linearGradient></defs><path id="cf" fill="url(#gg)" opacity=".5"/><path id="cp" fill="none" stroke="#8a5cff" stroke-width="2"/></svg>
 <div class="knobs"><div class="kn"><div class="dial" id="kb"><i></i></div>Bass <b id="kbv"></b></div><div class="kn"><div class="dial" id="kt"><i></i></div>Treble <b id="ktv"></b></div></div></div>
 <h2>Volume</h2><div class="card" id="vols"></div>
 <h2>Bluetooth devices</h2><div class="card" id="bt"></div>
@@ -129,7 +138,6 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
   <div class="sw"><span>Virtual surround</span><div class="tg"></div></div>
   <div class="sw"><span>Loudness enhancer</span><div class="tg on"></div></div>
 </div>
-<div id="np"><div class="art"></div><div class="tx"><div>Midnight Echoes</div><div class="mut" id="tm2" style="font-size:12px">0:00 / 3:35</div><div class="pg"><i id="pgi"></i></div></div><button id="pp">&#9654;</button></div>
 
 <div id="ov">
   <div id="ttl" style="font-size:20px">Enter PIN</div>
@@ -182,7 +190,7 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
     <div id="st"></div>
     <div id="msgs"></div>
     <div id="rb"><span id="rbt"></span><button id="rbx" style="border:0;background:none;color:var(--mut);font-size:22px;line-height:1;padding:0 4px">&times;</button></div>
-    <div class="send"><button class="ic2" id="photo"></button><div class="pill"><input id="txt" placeholder="Send chat" autocomplete="off"><button class="ic2s" id="mic"></button></div><button class="snd" id="sendb"></button><input type="file" id="pf" accept="image/*,video/*" hidden><input type="file" id="cam" accept="image/*" capture="environment" hidden><input type="file" id="ff" hidden></div>
+    <div class="send"><button class="ic2" id="photo"></button><button class="ic2" id="mic"></button><div class="pill"><input id="txt" placeholder="Send chat" autocomplete="off"></div><button class="snd" id="sendb"></button><input type="file" id="pf" accept="image/*,video/*" hidden><input type="file" id="cam" accept="image/*" capture="environment" hidden><input type="file" id="ff" hidden></div>
   </div>
 </div>
 
@@ -206,7 +214,7 @@ vols.forEach(function(v){
 var bands=["31","62","125","250","500","1K","2K","4K","8K","16K"],lv=[.5,.5,.5,.5,.5,.5,.5,.5,.5,.5];
 var presets={Flat:[50,50,50,50,50,50,50,50,50,50],Bass:[88,82,74,62,52,48,46,46,46,46],Rock:[70,62,52,42,38,46,58,68,72,74],Pop:[40,48,58,66,68,62,52,46,44,42],Vocal:[34,38,44,58,70,74,68,56,46,40],Treble:[40,40,40,42,46,54,64,74,82,88]};
 var setters=[];
-function curve(){$('#cp').setAttribute('d',lv.map(function(p,i){return(i?'L':'M')+(15+i*30)+' '+(55-p*50)}).join(' '))}
+function curve(){var d=lv.map(function(p,i){return(i?'L':'M')+(15+i*30)+' '+(55-p*50)}).join(' ');$('#cp').setAttribute('d',d);$('#cf').setAttribute('d',d+' L285 60 L15 60 Z')}
 bands.forEach(function(b,i){
   var d=document.createElement('div');d.className='band';
   d.innerHTML='<div class="v"><div class="t"></div><div class="f"></div><div class="k"></div></div>'+b+'<div class="db"></div>';
@@ -232,9 +240,6 @@ knob('#kb','#kbv',41);knob('#kt','#ktv',20);
   t.onclick=function(){t.classList.toggle('on');lab()};$('#bt').appendChild(d);
 });
 document.querySelectorAll('.tg').forEach(function(t){if(!t.onclick)t.onclick=function(){t.classList.toggle('on')}});
-var pl=false,pr=0;
-$('#pp').onclick=function(){pl=!pl;$('#pp').innerHTML=pl?'&#10074;&#10074;':'&#9654;'};
-setInterval(function(){if(pl){pr=(pr+1)%215;$('#pgi').style.width=(pr/215*100)+'%';$('#tm2').textContent=Math.floor(pr/60)+':'+String(pr%60).padStart(2,'0')+' / 3:35'}},1000);
 window.addEventListener('pagehide',function(){if(window._busy&&Date.now()<window._busy)return;$('#lock').click()});
 window.addEventListener('blur',function(){if(window._busy&&Date.now()<window._busy)return;$('#lock').click()});
 
@@ -271,11 +276,22 @@ function check(){
     return}
   if(entry===store('pin'))unlock();else if(store('pin2')&&entry===store('pin2')){$('#ov').classList.remove('show');$('#decoy').classList.add('show')}else{$('#msg').textContent='Wrong PIN';entry='';draw()}
 }
-function unlock(){$('#ov').classList.remove('show');$('#inside').classList.add('show');if(window.afterUnlock)window.afterUnlock()}
+function unlock(){$('#ov').classList.remove('show');document.documentElement.classList.add('in');$('#inside').classList.add('show');if(window.afterUnlock)window.afterUnlock()}
 $('#cancel').onclick=function(){$('#ov').classList.remove('show')};
-$('#lock').onclick=function(){$('#inside').classList.remove('show')};
+$('#lock').onclick=function(){$('#inside').classList.remove('show');document.documentElement.classList.remove('in')};
 $('#lock').addEventListener('click',function(){$('#decoy').classList.remove('show')});
 $('#dlock').onclick=function(){$('#lock').click()};
+(function(){
+  [["Studio","Flat and accurate","#1e5bff,#12a3ff","Flat"],["Concert","Wide and punchy","#a82bff,#ff4fa3","Rock"],["Night","Soft and quiet","#14304f,#2a6f97","Vocal"],["Bass Lab","Deep low end","#ff7a18,#ff3d6e","Bass"]].forEach(function(t,i){
+    var b=document.createElement('button');b.className='tile'+(i==0?' on':'');b.style.background='linear-gradient(135deg,'+t[2]+')';b.innerHTML=t[0]+'<small>'+t[1]+'</small>';
+    b.onclick=function(){document.querySelectorAll('.tile').forEach(function(x){x.classList.remove('on')});b.classList.add('on');presets[t[3]].forEach(function(v,j){setters[j](v/100)})};$('#tiles').appendChild(b)});
+  var cv=$('#spec'),cx=cv.getContext('2d'),bars=[],ph=0,i;for(i=0;i<40;i++)bars.push(.2);
+  setInterval(function(){if(document.hidden||document.documentElement.classList.contains('in'))return;ph+=.18;
+    var w=cv.width,h=cv.height,g=cx.createLinearGradient(0,h,0,0);g.addColorStop(0,'#1e90ff');g.addColorStop(.6,'#8a5cff');g.addColorStop(1,'#ff5fa2');
+    cx.clearRect(0,0,w,h);cx.fillStyle=g;var bw=w/bars.length;
+    for(var k=0;k<bars.length;k++){var t=.35+.3*Math.sin(ph+k*.5)+.25*Math.sin(ph*1.7+k*.23)+Math.random()*.12;bars[k]+=(Math.max(.05,Math.min(1,t))-bars[k])*.5;var bh=bars[k]*h;cx.fillRect(k*bw+2,h-bh,bw-4,bh)}
+    $('#vl').style.height=(30+Math.random()*65)+'%';$('#vr').style.height=(30+Math.random()*65)+'%'},70);
+})();
 ['Spatial audio','Noise suppression','High-resolution output','Gapless playback','Crossfade tracks'].forEach(function(n,i){
   var d=document.createElement('div');d.className='sw';d.innerHTML='<span>'+n+'</span><div class="tg'+(i%2==0?' on':'')+'"></div>';
   d.querySelector('.tg').onclick=function(){this.classList.toggle('on')};$('#d1').appendChild(d)});
@@ -415,9 +431,10 @@ async function openChat(c){
 Q('#back').onclick=function(){if(unsub)unsub();if(unP)unP();window._peerUid=null;pane('home')};
 async function send(){
   var t=Q('#txt').value.trim();if(!t)return;
-  try{var key=await getKey();if(!key)return;Q('#txt').value='';var e=await enc(key,replyTo?JSON.stringify({r:replyTo,x:t}):t);clearReply();await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,iv:e.iv,ct:e.ct,ts:Date.now()})}catch(x){}
+  try{var key=await getKey();if(!key)return;Q('#txt').value='';var e=await enc(key,replyTo?JSON.stringify({r:replyTo,x:t}):t);clearReply();await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,iv:e.iv,ct:e.ct,ts:Date.now()})}catch(x){Q('#st').textContent='Send failed: '+(x.code||x.message)}
 }
-Q('#sendb').onclick=send;
+var lastSend=0;function sendOnce(){var n=Date.now();if(n-lastSend<500)return;lastSend=n;send()}
+Q('#sendb').onclick=sendOnce;Q('#sendb').addEventListener('touchstart',function(e){e.preventDefault();sendOnce()},{passive:false});
 function fit(){var v=window.visualViewport;if(!v)return;var e=Q('#inside');e.style.bottom='auto';e.style.top=v.offsetTop+'px';e.style.height=v.height+'px';e.style.paddingBottom=(v.height<window.innerHeight-120)?'8px':'';window.scrollTo(0,0);var b=Q('#msgs');b.scrollTop=b.scrollHeight}
 if(window.visualViewport){visualViewport.addEventListener('resize',fit);visualViewport.addEventListener('scroll',fit)}
 Q('#txt').addEventListener('focus',function(){setTimeout(fit,300)});
