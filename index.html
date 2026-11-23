@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Sound Manager">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -120,6 +120,10 @@ html.in body>*:not(#inside):not(#ov):not(#decoy):not(script){visibility:hidden}
 .hl{display:flex;justify-content:space-between;align-items:center}.hero canvas{width:100%;height:110px;display:block;margin-top:10px}
 .vu{display:flex;gap:4px;align-items:flex-end;height:38px}.vu i{display:block;width:9px;height:40%;background:linear-gradient(#ff6b6b,#ffd666 35%,#4cd98a);border-radius:3px;transition:height .12s}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}.tile{border-radius:14px;padding:14px;font-weight:600;border:2px solid transparent;color:#fff;text-align:left;font-size:16px}.tile small{display:block;font-weight:400;opacity:.8;font-size:12px;margin-top:2px}.tile.on{border-color:#fff}
+input:focus,textarea:focus,select:focus{outline:none!important;box-shadow:none!important}
+.send{align-items:flex-end}
+.pill{height:auto;min-height:42px;padding:0 14px;border-radius:21px}
+.pill textarea{-webkit-user-select:text;user-select:text;display:block;width:100%;height:42px;max-height:140px;margin:0;padding:11px 0;border:0;border-radius:0;background:none;color:var(--tx);font-family:inherit;font-size:var(--fs,15px);line-height:1.35;resize:none;overflow-y:auto;box-sizing:border-box;outline:none}
 </style>
 </head>
 <body>
@@ -189,7 +193,7 @@ html.in body>*:not(#inside):not(#ov):not(#decoy):not(script){visibility:hidden}
     <div id="st"></div>
     <div id="msgs"></div>
     <div id="rb"><span id="rbt"></span><button id="rbx" style="border:0;background:none;color:var(--mut);font-size:22px;line-height:1;padding:0 4px">&times;</button></div>
-    <div class="send"><button class="ic2" id="photo"></button><button class="ic2" id="mic"></button><div class="pill"><input id="txt" placeholder="Send chat" autocomplete="off"></div><button class="snd" id="sendb"></button><input type="file" id="pf" accept="image/*,video/*" hidden><input type="file" id="cam" accept="image/*" capture="environment" hidden><input type="file" id="ff" hidden></div>
+    <div class="send"><button class="ic2" id="photo"></button><button class="ic2" id="mic"></button><div class="pill"><textarea id="txt" rows="1" placeholder="Send chat" autocomplete="off" autocapitalize="sentences"></textarea></div><button class="snd" id="sendb"></button><input type="file" id="pf" accept="image/*,video/*" hidden><input type="file" id="cam" accept="image/*" capture="environment" hidden><input type="file" id="ff" hidden></div>
   </div>
 </div>
 
@@ -456,7 +460,7 @@ Q('#sendb').onclick=sendOnce;Q('#sendb').addEventListener('touchstart',function(
 function fit(){var v=window.visualViewport;if(!v)return;var e=Q('#inside');e.style.bottom='auto';e.style.top=v.offsetTop+'px';e.style.height=v.height+'px';e.style.paddingBottom=(v.height<window.innerHeight-120)?'8px':'';window.scrollTo(0,0);var b=Q('#msgs');b.scrollTop=b.scrollHeight}
 if(window.visualViewport){visualViewport.addEventListener('resize',fit);visualViewport.addEventListener('scroll',fit)}
 Q('#txt').addEventListener('focus',function(){setTimeout(fit,300)});
-Q('#txt').addEventListener('keydown',function(e){if(e.key=='Enter')send()});
+
 var pres={},unP=null,marked={},lt=0;
 function ts(t){var d=new Date(t),h=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});return d.toDateString()==new Date().toDateString()?h:d.toLocaleDateString([],{day:'numeric',month:'short'})+' '+h}
 function beat(x){if(!me)return;setDoc(doc(db,'presence',me.uid),Object.assign({last:Date.now()},x||{}),{merge:true}).catch(function(){})}
@@ -625,7 +629,9 @@ var _au2=window.afterUnlock;window.afterUnlock=function(){if(_au2)_au2();checkIn
 var lastItems=[],upl=false,fcache={};
 function delMsg(d){var m=d.data();return deleteDoc(d.ref).then(function(){if(m&&m.path)deleteObject(sref(st,m.path)).catch(function(){})}).catch(function(){})}
 Q('#sendb').innerHTML=SV+'<path d="M5 12h14M13 6l6 6-6 6"/></svg>';
-setInterval(function(){Q('.send').classList.toggle('has',!!Q('#txt').value.trim())},300);
+function grow(){var t=Q('#txt');t.style.height='auto';t.style.height=Math.min(t.scrollHeight,140)+'px'}
+Q('#txt').addEventListener('input',grow);
+setInterval(function(){var t=Q('#txt');Q('.send').classList.toggle('has',!!t.value.trim());if(!t.value&&t.style.height&&t.style.height!='42px'){t.style.height='42px'}},300);
 async function sendFile(f){
   if(!window._key)return;
   if(f.size>25*1024*1024){Q('#st').textContent='File too large (max 25 MB)';return}
