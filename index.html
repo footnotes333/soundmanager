@@ -83,6 +83,12 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
 .m .nm{font-size:10px;opacity:.65;margin-bottom:1px}.m .tm{font-size:10px;opacity:.7;text-align:right;margin-top:2px}.m .tm.sn{color:#b6ffd0;opacity:1}
 #st{text-align:center;font-size:12px;color:var(--mut);min-height:16px;margin:-6px 0 6px}
 #tmr{background:var(--card);color:var(--tx);border:1px solid var(--tr);border-radius:8px;padding:4px;font-size:13px}
+.bar .ic{border:0;background:none;color:var(--ac);padding:6px;margin-left:6px;line-height:0}.ic svg,.lk-big svg{width:24px;height:24px}
+.rt{display:flex;align-items:center;gap:4px}
+.lk-big{width:64px;height:64px;border-radius:50%;background:var(--card);border:1px solid var(--tr);color:var(--ac);line-height:0}.lk-big svg{width:28px;height:28px}
+.btn.mute{background:#241a1a;color:#d4908b;border:1px solid #3d2626}
+.ct{display:flex;align-items:center;gap:12px}.av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#1e90ff,#8a5cff);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+#set.on{overflow:auto;flex:1;min-height:0}
 </style>
 </head>
 <body>
@@ -120,15 +126,22 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
     <button class="lk" id="lock">Lock</button>
   </div>
   <div class="pane" id="home">
-    <div class="bar"><b id="me"></b><span><button id="out">Log out</button><button id="lock2">Lock</button></span></div>
+    <div class="bar"><b id="me"></b><span class="rt"><button class="ic" id="gear"></button><button class="ic lk-ic" id="lock2"></button></span></div>
     <div class="add"><input id="who" placeholder="Friend's username" autocapitalize="none" autocorrect="off"><button class="btn" id="addb">Add</button></div>
     <div id="aerr2" style="color:#ff453a;font-size:14px;min-height:20px;margin-top:6px"></div>
     <button class="btn sec" id="notif" style="margin-top:6px;display:none">Enable sound alerts</button>
     <div id="list"></div>
-    <div style="margin-top:18px"><button class="btn sec" id="chpin">Change PIN</button><button class="btn" id="panic" style="background:#ff453a">Panic wipe</button></div>
+    <div style="text-align:center;margin-top:26px"><button class="lk-big lk-ic" id="lock5"></button></div>
+  </div>
+  <div class="pane" id="set">
+    <div class="bar"><button id="sback" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b>Settings</b><span class="rt"><button class="ic lk-ic" id="lock4"></button></span></div>
+    <button class="btn sec" id="chpin">Change PIN</button>
+    <button class="btn sec" id="out">Log out</button>
+    <button class="btn mute" id="panic" style="margin-top:22px">Wipe clean</button>
+    <div style="color:var(--mut);font-size:12px;margin-top:8px">Wipe clean erases all messages, keys and settings on this phone.</div>
   </div>
   <div class="pane" id="chat">
-    <div class="bar"><button id="back" style="margin:0">‹ Back</button><b id="peer"></b><select id="tmr"><option value="1">Instant</option><option value="5">5 sec</option><option value="60">1 min</option><option value="0">Off</option></select></div>
+    <div class="bar"><button id="back" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b id="peer"></b><span class="rt"><select id="tmr"><option value="1">Instant</option><option value="5">5 sec</option><option value="60">1 min</option><option value="0">Off</option></select><button class="ic lk-ic" id="lock3"></button></span></div>
     <div id="st"></div>
     <div id="msgs"></div>
     <div class="send"><input id="txt" placeholder="Message"><button class="btn" id="sendb">Send</button></div>
@@ -220,7 +233,7 @@ function check(){
     return}
   if(entry===store('pin'))unlock();else{$('#msg').textContent='Wrong PIN';entry='';draw()}
 }
-function unlock(){$('#ov').classList.remove('show');$('#inside').classList.add('show')}
+function unlock(){$('#ov').classList.remove('show');$('#inside').classList.add('show');if(window.afterUnlock)window.afterUnlock()}
 $('#cancel').onclick=function(){$('#ov').classList.remove('show')};
 $('#lock').onclick=function(){$('#inside').classList.remove('show')};
 </script>
@@ -247,7 +260,7 @@ async function shared(pp){var pk=await crypto.subtle.importKey('raw',ub(pp),{nam
 async function enc(key,t){var iv=crypto.getRandomValues(new Uint8Array(12));var c=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(t));return{iv:b64(iv),ct:b64(c)}}
 async function dec(key,m){try{return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(m.iv)},key,ub(m.ct)))}catch(e){return '\u{1F512} Cannot decrypt'}}
 async function safety(a,b){var h=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode([a,b].sort().join('|'))));return Array.from(h.slice(0,6)).map(function(x){return String(x).padStart(3,'0')}).join(' ')}
-function pane(id){['auth','home','chat'].forEach(function(p){Q('#'+p).classList.toggle('on',p==id)})}
+function pane(id){['auth','home','chat','set'].forEach(function(p){Q('#'+p).classList.toggle('on',p==id)})}
 function err(e,el){var m={'auth/invalid-credential':'Wrong username or password','auth/email-already-in-use':'Username already taken','auth/weak-password':'Password needs 6+ characters','auth/network-request-failed':'No connection','auth/invalid-api-key':'App key is wrong','auth/operation-not-allowed':'Email/Password sign-in is not switched on in Firebase'};Q(el||'#aerr').textContent=typeof e=='string'?e:(m[e.code]||e.code||'Something went wrong')}
 const nm=function(){return Q('#un').value.trim().toLowerCase()};
 Q('#login').onclick=async function(){try{await signInWithEmailAndPassword(auth,nm()+D,Q('#pw').value)}catch(e){err(e)}};
@@ -282,7 +295,7 @@ document.addEventListener('visibilitychange',function(){if(document.hidden)Q('#l
 function cons(){try{return JSON.parse(localStorage.getItem('c_'+me.uid)||'[]')}catch(e){return[]}}
 function list(){
   var L=Q('#list');L.innerHTML='';
-  cons().forEach(function(c){var d=document.createElement('div');d.className='ct';d.textContent=c.n;d.onclick=function(){openChat(c)};L.appendChild(d)});
+  cons().forEach(function(c){var d=document.createElement('div');d.className='ct';d.innerHTML='<span class="av"></span><span class="cn"></span>';d.querySelector('.av').textContent=c.n[0].toUpperCase();d.querySelector('.cn').textContent=c.n;d.onclick=function(){openChat(c)};L.appendChild(d)});
 }
 Q('#addb').onclick=async function(){
   var n=Q('#who').value.trim().toLowerCase();Q('#aerr2').textContent='';
@@ -303,6 +316,7 @@ async function getKey(){
   return window._key;
 }
 async function openChat(c){
+  lastChat=c;try{localStorage.setItem('lc_'+me.uid,JSON.stringify(c))}catch(e){}
   peerName=c.n;peerPub='';window._key=null;
   Q('#peer').textContent=c.n;pane('chat');var box=Q('#msgs');box.innerHTML='';
   if(!kp)await ensureKeys();
@@ -361,6 +375,21 @@ Q('#panic').onclick=async function(){
   await setDoc(doc(db,'tokens',me.uid),{list:[]})}catch(e){}
   localStorage.clear();try{indexedDB.deleteDatabase('sm')}catch(e){}
   await signOut(auth);location.reload();
+};
+var IO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
+var ICL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+Q('#gear').innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+function lockIcons(x){document.querySelectorAll('.lk-ic').forEach(function(b){b.innerHTML=x})}
+lockIcons(IO);
+['lock2','lock3','lock4','lock5'].forEach(function(id){Q('#'+id).onclick=function(){lockIcons(ICL);setTimeout(function(){Q('#lock').click();lockIcons(IO)},220)}});
+Q('#lock').addEventListener('click',function(){if(unsub)unsub();if(unP)unP();window._peerUid=null;Q('#msgs').innerHTML='';Q('#peer').textContent='';if(me)pane('home')});
+Q('#gear').onclick=function(){pane('set')};
+Q('#sback').onclick=function(){pane('home')};
+var lastChat=null;
+window.afterUnlock=function(){
+  if(!me)return;var c=lastChat;
+  if(!c){try{c=JSON.parse(localStorage.getItem('lc_'+me.uid)||'null')}catch(e){}}
+  if(c&&cons().some(function(x){return x.n==c.n}))openChat(c);
 };
 </script>
 </body>
