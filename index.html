@@ -98,6 +98,7 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
 .sheet{background:#1c1c1e;border-radius:16px;width:100%;max-width:420px;overflow:hidden}
 .sheet button{display:block;width:100%;padding:15px;border:0;background:none;color:var(--tx);font-size:17px;text-align:left;border-bottom:1px solid var(--tr)}
 #decoy{position:fixed;inset:0;background:var(--bg);display:none;z-index:20;overflow:auto;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:40px}#decoy.show{display:block}
+#call{position:fixed;inset:0;background:#0b0b0d;z-index:35;display:none;flex-direction:column;align-items:center;justify-content:center}#call.on{display:flex}.crow{display:flex;gap:26px;margin-top:60px}.cb{width:72px;height:72px;border-radius:50%;border:0;background:#2c2c2e;color:#fff;font-size:13px}.cb.dec{background:#7a2e2a}.cb.acc{background:#2e7a4a}
 </style>
 </head>
 <body>
@@ -146,6 +147,8 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
     <div id="list"></div>
     
   </div>
+  <div id="call"><div class="av" id="cav" style="width:96px;height:96px;font-size:40px"></div><div id="cn" style="font-size:26px;margin-top:16px"></div><div id="cs" style="color:var(--mut);margin-top:6px"></div>
+    <div class="crow"><button class="cb" id="cmute">Mute</button><button class="cb dec" id="cdec">End</button><button class="cb acc" id="cacc">Accept</button></div><audio id="ra" autoplay playsinline></audio></div>
   <div id="menu"></div>
   <div class="pane" id="set">
     <div class="bar"><button id="sback" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b>Settings</b><span class="rt"><button class="ic lk-ic" id="lock4"></button></span></div>
@@ -156,7 +159,7 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
     <div style="color:var(--mut);font-size:12px;margin-top:8px">Wipe clean erases all messages, keys and settings on this phone.</div>
   </div>
   <div class="pane" id="chat">
-    <div class="bar"><button id="back" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b id="peer"></b><span class="rt"><select id="tmr"><option value="1">Instant</option><option value="5">5 sec</option><option value="60">1 min</option><option value="0">Off</option></select><button class="ic lk-ic" id="lock3"></button></span></div>
+    <div class="bar"><button id="back" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b id="peer"></b><span class="rt"><select id="tmr"><option value="1">Instant</option><option value="5">5 sec</option><option value="60">1 min</option><option value="0">Off</option></select><button class="ic" id="callb"></button><button class="ic lk-ic" id="lock3"></button></span></div>
     <div id="st"></div>
     <div id="msgs"></div>
     <div id="rb"><span id="rbt"></span><button id="rbx" style="border:0;background:none;color:var(--mut);font-size:22px;line-height:1;padding:0 4px">&times;</button></div>
@@ -272,7 +275,7 @@ $('#dlock').onclick=function(){$('#lock').click()};
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {getFirestore,doc,getDoc,setDoc,arrayUnion,addDoc,deleteDoc,collection,query,orderBy,onSnapshot,getDocs,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getFirestore,doc,getDoc,setDoc,arrayUnion,addDoc,deleteDoc,collection,query,orderBy,onSnapshot,getDocs,updateDoc,where} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {getMessaging,getToken} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 const cfg={apiKey:"AIzaSyCHyraoGgU2fB7LOrpfLZu97Onyg-0hZv8",authDomain:"soundmanager-app.firebaseapp.com",projectId:"soundmanager-app",storageBucket:"soundmanager-app.firebasestorage.app",messagingSenderId:"1043524666493",appId:"1:1043524666493:web:3826037c1385455cff9d14"};
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
@@ -304,7 +307,7 @@ Q('#signup').onclick=async function(){
 };
 onAuthStateChanged(auth,function(u){
   me=u;
-  if(u){Q('#me').textContent=u.email.split('@')[0];Q('#aerr').textContent='';pane('home');list();chkNotif();ensureKeys().catch(function(e){console.log(e)})}else pane('auth');
+  if(u){Q('#me').textContent=u.email.split('@')[0];Q('#aerr').textContent='';pane('home');list();chkNotif();listenCalls();ensureKeys().catch(function(e){console.log(e)})}else pane('auth');
 });
 Q('#out').onclick=function(){signOut(auth)};
 const VAPID="BIVIKDJQj0D71r8AalIlmb0ffcQWfngzl748gnt2QPGMY-7c-0x66nwHguNyAMoiCozPKFgGK0zHOCJmaTg1zg8";
@@ -499,6 +502,71 @@ Q('#dpin').onclick=function(){busy();
   if(n===cur)return alert('Decoy PIN must be different');
   localStorage.setItem('pin2',n);alert('Decoy PIN set');
 };
+var ICE=[{urls:'stun:stun.l.google.com:19302'}],pc=null,ls=null,ccid='',cts=0,ckey=null,unCall=null,unCands=null,unC=null,pend=null,ctm=null,cstate='',pq=[];
+Q('#callb').innerHTML=SV+'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>';
+function cui(n,st,mode){Q('#cn').textContent=n;Q('#cav').textContent=(n||'?')[0].toUpperCase();Q('#cs').textContent=st;Q('#call').classList.add('on');Q('#cacc').style.display=mode=='in'?'':'none';Q('#cmute').style.display=mode=='act'?'':'none';Q('#cdec').textContent=mode=='in'?'Decline':'End'}
+async function keyForName(n){var d=await getDoc(doc(db,'usernames',n));if(!d.exists()||!d.data().pub)return null;return shared(d.data().pub)}
+async function cleanCands(id){try{var x=await getDocs(collection(db,'calls',id,'cands'));x.docs.forEach(function(d){deleteDoc(d.ref)})}catch(e){}}
+function end(msg){clearInterval(ctm);if(unCall){unCall();unCall=null}if(unCands){unCands();unCands=null}
+  try{if(pc)pc.close()}catch(e){}pc=null;if(ls){ls.getTracks().forEach(function(t){t.stop()});ls=null}
+  var id=ccid;cstate='';ccid='';
+  if(msg){Q('#cs').textContent=msg;setTimeout(function(){if(!cstate)Q('#call').classList.remove('on')},1500)}else Q('#call').classList.remove('on');
+  if(id)cleanCands(id)}
+function endCall(notify,msg){if(notify&&ccid)updateDoc(doc(db,'calls',ccid),{state:'ended'}).catch(function(){});end(msg||'Call ended')}
+function connected(){if(cstate=='act'&&Q('#cs').textContent.indexOf(':')>0)return;cstate='act';var t0=Date.now();cui(Q('#cn').textContent,'00:00','act');clearInterval(ctm);ctm=setInterval(function(){var n=Math.floor((Date.now()-t0)/1000);Q('#cs').textContent=String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')},1000)}
+function flush(){pq.forEach(function(c){pc.addIceCandidate(c).catch(function(){})});pq=[]}
+function mkpc(){pc=new RTCPeerConnection({iceServers:ICE});
+  pc.onicecandidate=async function(e){if(e.candidate&&ccid){var x=await enc(ckey,JSON.stringify(e.candidate));addDoc(collection(db,'calls',ccid,'cands'),{from:me.uid,ts:cts,iv:x.iv,ct:x.ct}).catch(function(){})}};
+  pc.ontrack=function(e){var a=Q('#ra');a.srcObject=e.streams[0];a.play().catch(function(){})};
+  pc.onconnectionstatechange=function(){if(!pc)return;if(pc.connectionState=='connected')connected();if(pc.connectionState=='failed')endCall(true,'Connection failed')};
+  ls.getTracks().forEach(function(t){pc.addTrack(t,ls)});
+  pc.getSenders().forEach(function(se){try{var p=se.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];p.encodings[0].maxBitrate=16000;se.setParameters(p)}catch(e){}})}
+function watchCands(){unCands=onSnapshot(collection(db,'calls',ccid,'cands'),function(snap){snap.docChanges().forEach(async function(ch){if(ch.type!='added')return;var m=ch.doc.data();if(m.from==me.uid||m.ts!==cts)return;
+  var t=await decN(ckey,m);if(!t||!pc)return;var c=JSON.parse(t);if(pc.remoteDescription)pc.addIceCandidate(c).catch(function(){});else pq.push(c)})})}
+var MIC={audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}};
+async function startCall(){
+  if(!window._peerUid||cstate)return;busy();
+  try{if(!kp)await ensureKeys();ckey=await getKey();if(!ckey)return;
+    ls=await navigator.mediaDevices.getUserMedia(MIC);
+    cstate='out';ccid=window._cid;cts=Date.now();pq=[];mkpc();cui(peerName,'Calling\u2026','out');
+    var o=await pc.createOffer();await pc.setLocalDescription(o);var x=await enc(ckey,JSON.stringify(pc.localDescription));
+    await setDoc(doc(db,'calls',ccid),{from:me.uid,fromName:me.email.split('@')[0],to:window._peerUid,state:'ringing',ts:cts,iv:x.iv,ct:x.ct});
+    watchCands();var mine=cts;
+    unCall=onSnapshot(doc(db,'calls',ccid),async function(d){var m=d.data();if(!m||m.ts!==mine||!pc)return;
+      if(m.state=='declined')end('Declined');else if(m.state=='ended')end('Call ended');
+      else if(m.answer&&!pc.remoteDescription){var t=await decN(ckey,m.answer);if(t){await pc.setRemoteDescription(JSON.parse(t));flush()}}});
+    setTimeout(function(){if(cstate=='out'&&cts==mine)endCall(true,'No answer')},45000);
+  }catch(e){end('Cannot start call')}
+}
+async function acceptCall(){
+  if(!pend)return;var m=pend.data,id=pend.id;pend=null;busy();
+  try{if(!kp)await ensureKeys();ckey=await keyForName(m.fromName);if(!ckey)throw 0;
+    ls=await navigator.mediaDevices.getUserMedia(MIC);
+    cstate='act';ccid=id;cts=m.ts;pq=[];mkpc();cui(m.fromName,'Connecting\u2026','act');
+    var o=await decN(ckey,m);await pc.setRemoteDescription(JSON.parse(o));flush();
+    var a=await pc.createAnswer();await pc.setLocalDescription(a);var x=await enc(ckey,JSON.stringify(pc.localDescription));
+    await updateDoc(doc(db,'calls',id),{state:'active',answer:{iv:x.iv,ct:x.ct}});
+    watchCands();unCall=onSnapshot(doc(db,'calls',id),function(d){var q=d.data();if(q&&q.ts==cts&&q.state=='ended')end('Call ended')});
+  }catch(e){end('Cannot connect')}
+}
+function checkIncoming(){
+  if(!pend||cstate)return;var age=Date.now()-pend.data.ts;if(age>45000){pend=null;return}
+  if(!Q('#inside').classList.contains('show'))return;
+  cstate='in';cui(pend.data.fromName,'Incoming call','in');if(navigator.vibrate)navigator.vibrate([200,100,200]);
+  setTimeout(function(){if(cstate=='in'){cstate='';Q('#call').classList.remove('on');pend=null}},Math.max(1000,45000-age));
+}
+function listenCalls(){
+  if(unC)unC();
+  unC=onSnapshot(query(collection(db,'calls'),where('to','==',me.uid)),function(snap){snap.docChanges().forEach(function(ch){
+    if(ch.type=='removed')return;var m=ch.doc.data();
+    if(m.state=='ringing'&&Date.now()-m.ts<45000&&!cstate){pend={id:ch.doc.id,data:m};checkIncoming()}
+    else if(m.state!='ringing'&&pend&&pend.data.ts==m.ts){pend=null;if(cstate=='in'){end('Missed call')}}})},function(){});
+}
+Q('#callb').onclick=startCall;Q('#cacc').onclick=acceptCall;
+Q('#cdec').onclick=function(){if(cstate=='in'&&pend){updateDoc(doc(db,'calls',pend.id),{state:'declined'}).catch(function(){});pend=null;cstate='';Q('#call').classList.remove('on')}else endCall(true)};
+Q('#cmute').onclick=function(){if(!ls)return;var t=ls.getAudioTracks()[0];t.enabled=!t.enabled;this.textContent=t.enabled?'Mute':'Unmute'};
+Q('#lock').addEventListener('click',function(){if(cstate=='in'){cstate=''}else if(cstate)endCall(true);Q('#call').classList.remove('on')});
+var _au2=window.afterUnlock;window.afterUnlock=function(){if(_au2)_au2();checkIncoming()};
 </script>
 </body>
 </html>
