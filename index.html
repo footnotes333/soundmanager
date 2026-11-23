@@ -185,7 +185,7 @@ html.in body>*:not(#inside):not(#ov):not(#decoy):not(script){visibility:hidden}
     <div style="color:var(--mut);font-size:12px;margin-top:8px">Wipe clean erases all messages, keys and settings on this phone.</div>
   </div>
   <div class="pane" id="chat">
-    <div class="bar"><button id="back" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b id="peer"></b><span class="rt"><select id="tmr"><option value="60">1 min</option><option value="300">5 min</option><option value="0">Off</option></select><button class="ic" id="callb"></button><button class="ic lk-ic" id="lock3"></button></span></div>
+    <div class="bar"><button id="back" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b id="peer"></b><span class="rt"><button class="ic" id="callb"></button><button class="ic lk-ic" id="lock3"></button></span></div>
     <div id="st"></div>
     <div id="msgs"></div>
     <div id="rb"><span id="rbt"></span><button id="rbx" style="border:0;background:none;color:var(--mut);font-size:22px;line-height:1;padding:0 4px">&times;</button></div>
@@ -416,7 +416,6 @@ async function openChat(c){
   if(!key){box.textContent='This user has not opened the updated app yet.';return}
   Q('#peer').onclick=async function(){alert('Safety code\n\n'+await safety(myPub,peerPub)+'\n\nCompare this with '+c.n+'. If it matches on both phones, nobody is intercepting.')};
   var cid=[me.uid,c.u].sort().join('_');window._cid=cid;window._peerUid=c.u;pres={};if(unP)unP();unP=onSnapshot(doc(db,'presence',c.u),function(d){pres=d.data()||{};stat()});
-  var tk='tm_'+cid;Q('#tmr').value=localStorage.getItem(tk)||'300';if(!Q('#tmr').value)Q('#tmr').value='300';Q('#tmr').onchange=function(){localStorage.setItem(tk,Q('#tmr').value)};
   var q=query(collection(db,'chats',cid,'messages'),orderBy('ts'));
   unsub=onSnapshot(q,async function(snap){
     var run=function(){return Promise.all(snap.docs.map(async function(d){var m=d.data(),t=null;
@@ -441,15 +440,13 @@ async function openChat(c){
       attach(el,x,mine);
       if(!mine){
         if(!x.m.seen&&!marked[x.d.id]){marked[x.d.id]=1;updateDoc(x.d.ref,{seen:Date.now()}).catch(function(){})}
-        var sec=+Q('#tmr').value;if(sec>0&&x.m.kind)sec=Math.max(sec,(x.m.kind=='a'||x.m.kind=='f')?300:30);
-        if(sec>0&&!x.m.keep&&!timers[x.d.id]){timers[x.d.id]=setTimeout(function(){delete timers[x.d.id];if(!keepMap[x.d.id])delMsg(x.d)},sec*1000)}
       }
       keepMap[x.d.id]=!!x.m.keep;
     });
     box.scrollTop=box.scrollHeight;
   });
 }
-Q('#back').onclick=function(){if(unsub)unsub();if(unP)unP();window._peerUid=null;pane('home')};
+Q('#back').onclick=function(){clearSeen();if(unsub)unsub();if(unP)unP();window._peerUid=null;pane('home')};
 async function send(){
   var t=Q('#txt').value.trim();if(!t)return;
   try{var key=await getKey();if(!key)return;Q('#txt').value='';var e=await enc(key,replyTo?JSON.stringify({r:replyTo,x:t}):t);clearReply();await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,iv:e.iv,ct:e.ct,ts:Date.now()})}catch(x){Q('#st').textContent='Send failed: '+(x.code||x.message)}
@@ -474,7 +471,7 @@ Q('#chpin').onclick=function(){busy();
 };
 Q('#panic').onclick=async function(){
   if(!confirm('Erase all messages, keys and settings on this phone?'))return;
-  try{for(var c of cons()){var cid=[me.uid,c.u].sort().join('_');var sn=await getDocs(collection(db,'chats',cid,'messages'));await Promise.all(sn.docs.map(function(d){return delMsg(d)}))}
+  try{for(var c of cons()){var cid=[me.uid,c.u].sort().join('_');var sn=await getDocs(collection(db,'chats',cid,'messages'));await Promise.all(sn.docs.map(async function(d){try{await updateDoc(d.ref,{keep:false})}catch(e){}return delMsg(d)}))}
   await setDoc(doc(db,'tokens',me.uid),{list:[]})}catch(e){}
   localStorage.clear();try{indexedDB.deleteDatabase('sm')}catch(e){}
   await signOut(auth);location.reload();
@@ -538,7 +535,7 @@ function copyT(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigat
 async function editMsg(x){busy();var n=prompt('Edit message',x.plain);if(n===null||!n.trim()||n.trim()==x.plain)return;var key=await getKey();if(!key)return;n=n.trim();
   var e=await enc(key,x.rq?JSON.stringify({r:x.rq,x:n}):n);updateDoc(x.d.ref,{iv:e.iv,ct:e.ct,edited:true}).catch(function(){})}
 function delMenu(x,mine,el){var it=[['Delete for me',function(){var h=hidSet();h[x.d.id]=1;localStorage.setItem('hid_'+me.uid,JSON.stringify(h));el.remove()},1]];
-  if(mine)it.push(['Delete for everyone',function(){delMsg(x.d)},1]);it.push(['Cancel']);sheet(it)}
+  if(mine)it.push(['Delete for everyone',function(){updateDoc(x.d.ref,{keep:false}).catch(function(){}).then(function(){delMsg(x.d)})},1]);it.push(['Cancel']);sheet(it)}
 function openMenu(x,mine,el){
   var txt=x.plain,it=[['Reply',function(){startReply(x,mine)}],[x.m.keep?'Unsave':'Save',function(){updateDoc(x.d.ref,{keep:!x.m.keep}).catch(function(){})}]];
   if(mine&&txt!=null)it.push(['Edit',function(){editMsg(x)}]);
@@ -626,7 +623,7 @@ Q('#cmute').onclick=function(){if(!ls)return;var t=ls.getAudioTracks()[0];t.enab
 Q('#lock').addEventListener('click',function(){if(cstate=='in'){cstate=''}else if(cstate)endCall(true);Q('#call').classList.remove('on')});
 var _au2=window.afterUnlock;window.afterUnlock=function(){if(_au2)_au2();checkIncoming()};
 var lastItems=[],upl=false,fcache={};
-function delMsg(d){var m=d.data();if(m&&m.path)deleteObject(sref(st,m.path)).catch(function(){});return deleteDoc(d.ref)}
+function delMsg(d){var m=d.data();return deleteDoc(d.ref).then(function(){if(m&&m.path)deleteObject(sref(st,m.path)).catch(function(){})}).catch(function(){})}
 Q('#sendb').innerHTML=SV+'<path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 setInterval(function(){Q('.send').classList.toggle('has',!!Q('#txt').value.trim())},300);
 async function sendFile(f){
@@ -668,9 +665,11 @@ function applyUI(){var u=uiSet(),r=document.documentElement.style;
   Q('#fs').value=u.fs||'15';Q('#cme').value=u.cme||'#4da3ff';Q('#cth').value=u.cth||'#4cd98a'}
 ['fs','cme','cth'].forEach(function(id){Q('#'+id).onchange=function(){var u=uiSet();u[id]=this.value;localStorage.setItem('ui',JSON.stringify(u));applyUI()}});
 applyUI();
-Q('#lock').addEventListener('click',function(){
-  if(me&&Q('#tmr').value!='0'&&lastItems.length){lastItems.forEach(function(x){var mine=x.m.from==me.uid;if(!x.m.keep&&x.t!==null&&(!mine||x.m.seen))delMsg(x.d)});lastItems=[]}
-});
+function clearSeen(){
+  if(!me||!lastItems.length)return;var L=lastItems;lastItems=[];
+  L.forEach(function(x){var mine=x.m.from==me.uid;if(x.m.keep||x.t===null)return;if(!mine||x.m.seen)delMsg(x.d)});
+}
+Q('#lock').addEventListener('click',clearSeen);
 </script>
 </body>
 </html>
