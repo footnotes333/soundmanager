@@ -91,6 +91,13 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
 #set.on{overflow:auto;flex:1;min-height:0}
 .ic2{border:0;background:var(--card);color:var(--ac);width:44px;height:48px;border-radius:12px;flex:none;line-height:0;padding:0}.ic2 svg{width:22px;height:22px}.ic2.rec{background:#4a2323;color:#e8a6a1}
 .m a{word-break:break-all;text-decoration:underline}
+.m{touch-action:pan-y;transition:transform .12s}.m.kept{box-shadow:0 0 0 1.5px rgba(255,214,102,.55)}
+.qt{font-size:11px;opacity:.8;border-left:2px solid rgba(255,255,255,.6);padding-left:6px;margin-bottom:4px}
+#rb{display:none;align-items:center;justify-content:space-between;background:var(--card);border-left:3px solid var(--ac);border-radius:8px;padding:6px 10px;margin-bottom:6px;font-size:13px;color:var(--mut)}#rb.on{display:flex}
+#menu{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;padding:16px}#menu.on{display:flex}
+.sheet{background:#1c1c1e;border-radius:16px;width:100%;max-width:420px;overflow:hidden}
+.sheet button{display:block;width:100%;padding:15px;border:0;background:none;color:var(--tx);font-size:17px;text-align:left;border-bottom:1px solid var(--tr)}
+#decoy{position:fixed;inset:0;background:var(--bg);display:none;z-index:20;overflow:auto;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:40px}#decoy.show{display:block}
 </style>
 </head>
 <body>
@@ -117,6 +124,10 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
   <button class="lk" id="cancel">Cancel</button>
 </div>
 
+<div id="decoy"><div class="hd"><h1 style="font-size:34px">Sound Pro</h1><div class="sub" id="dlock">Close</div></div>
+<h2>Audio engine</h2><div class="card" id="d1"></div>
+<h2>Gain and limiter</h2><div class="card" id="d2"></div>
+<h2>Output</h2><div class="card" id="d3"></div></div>
 <div id="inside">
   <div class="pane on" id="auth">
     <h1>Welcome</h1>
@@ -133,11 +144,13 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
     <div id="aerr2" style="color:#ff453a;font-size:14px;min-height:20px;margin-top:6px"></div>
     <button class="btn sec" id="notif" style="margin-top:6px;display:none">Enable sound alerts</button>
     <div id="list"></div>
-    <div style="text-align:center;margin-top:26px"><button class="lk-big lk-ic" id="lock5"></button></div>
+    
   </div>
+  <div id="menu"></div>
   <div class="pane" id="set">
     <div class="bar"><button id="sback" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b>Settings</b><span class="rt"><button class="ic lk-ic" id="lock4"></button></span></div>
     <button class="btn sec" id="chpin">Change PIN</button>
+    <button class="btn sec" id="dpin">Set decoy PIN</button>
     <button class="btn sec" id="out">Log out</button>
     <button class="btn mute" id="panic" style="margin-top:22px">Wipe clean</button>
     <div style="color:var(--mut);font-size:12px;margin-top:8px">Wipe clean erases all messages, keys and settings on this phone.</div>
@@ -146,6 +159,7 @@ h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient
     <div class="bar"><button id="back" class="ic" style="margin:0" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><b id="peer"></b><span class="rt"><select id="tmr"><option value="1">Instant</option><option value="5">5 sec</option><option value="60">1 min</option><option value="0">Off</option></select><button class="ic lk-ic" id="lock3"></button></span></div>
     <div id="st"></div>
     <div id="msgs"></div>
+    <div id="rb"><span id="rbt"></span><button id="rbx" style="border:0;background:none;color:var(--mut);font-size:22px;line-height:1;padding:0 4px">&times;</button></div>
     <div class="send"><button class="ic2" id="photo"></button><button class="ic2" id="mic"></button><input id="txt" placeholder="Message"><button class="btn" id="sendb">Send</button><input type="file" id="pf" accept="image/*" hidden></div>
   </div>
 </div>
@@ -199,8 +213,8 @@ document.querySelectorAll('.tg').forEach(function(t){if(!t.onclick)t.onclick=fun
 var pl=false,pr=0;
 $('#pp').onclick=function(){pl=!pl;$('#pp').innerHTML=pl?'&#10074;&#10074;':'&#9654;'};
 setInterval(function(){if(pl){pr=(pr+1)%215;$('#pgi').style.width=(pr/215*100)+'%';$('#tm2').textContent=Math.floor(pr/60)+':'+String(pr%60).padStart(2,'0')+' / 3:35'}},1000);
-window.addEventListener('pagehide',function(){$('#lock').click()});
-window.addEventListener('blur',function(){$('#lock').click()});
+window.addEventListener('pagehide',function(){if(window._busy&&Date.now()<window._busy)return;$('#lock').click()});
+window.addEventListener('blur',function(){if(window._busy&&Date.now()<window._busy)return;$('#lock').click()});
 
 // Hidden entrance: long-press the small subtitle
 var timer;
@@ -233,11 +247,27 @@ function check(){
   if(mode=='confirm'){
     if(entry===first){store('pin',entry);unlock()}else{$('#msg').textContent="PINs didn't match";entry='';first='';mode='create';$('#ttl').textContent='Create a 4-digit PIN';draw()}
     return}
-  if(entry===store('pin'))unlock();else{$('#msg').textContent='Wrong PIN';entry='';draw()}
+  if(entry===store('pin'))unlock();else if(store('pin2')&&entry===store('pin2')){$('#ov').classList.remove('show');$('#decoy').classList.add('show')}else{$('#msg').textContent='Wrong PIN';entry='';draw()}
 }
 function unlock(){$('#ov').classList.remove('show');$('#inside').classList.add('show');if(window.afterUnlock)window.afterUnlock()}
 $('#cancel').onclick=function(){$('#ov').classList.remove('show')};
 $('#lock').onclick=function(){$('#inside').classList.remove('show')};
+$('#lock').addEventListener('click',function(){$('#decoy').classList.remove('show')});
+$('#dlock').onclick=function(){$('#lock').click()};
+['Spatial audio','Noise suppression','High-resolution output','Gapless playback','Crossfade tracks'].forEach(function(n,i){
+  var d=document.createElement('div');d.className='sw';d.innerHTML='<span>'+n+'</span><div class="tg'+(i%2==0?' on':'')+'"></div>';
+  d.querySelector('.tg').onclick=function(){this.classList.toggle('on')};$('#d1').appendChild(d)});
+[["Pre-amp gain",50],["Limiter threshold",80],["Stereo width",60],["Crossfade length",30]].forEach(function(v){
+  var d=document.createElement('div');d.className='row';
+  d.innerHTML='<div class="lab"><span>'+v[0]+'</span><span>'+v[1]+'%</span></div><div class="sl"><div class="t"></div><div class="f"></div><div class="k"></div></div>';
+  $('#d2').appendChild(d);
+  var f=d.querySelector('.f'),k=d.querySelector('.k'),n=d.querySelector('.lab span:last-child');
+  function set(p){f.style.width=p*100+'%';k.style.left=p*100+'%';n.textContent=Math.round(p*100)+'%'}
+  set(v[1]/100);drag(d.querySelector('.sl'),false,set)});
+[["Sample rate",["44.1 kHz","48 kHz","96 kHz"]],["Buffer size",["Low latency","Balanced","Stable"]],["Output",["Speaker","Bluetooth","Wired"]],["Dithering",["Off","Low","High"]]].forEach(function(r){
+  var d=document.createElement('div');d.className='sw';var i=0;
+  d.innerHTML='<span>'+r[0]+'</span><span class="mut"></span>';var v=d.lastChild;v.textContent=r[1][0];
+  d.onclick=function(){i=(i+1)%r[1].length;v.textContent=r[1][i]};$('#d3').appendChild(d)});
 </script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -293,7 +323,7 @@ function chkNotif(){
 }
 Q('#notif').onclick=enableAlerts;
 Q('#lock2').onclick=function(){Q('#lock').click()};
-document.addEventListener('visibilitychange',function(){if(document.hidden)Q('#lock').click()});
+document.addEventListener('visibilitychange',function(){if(document.hidden&&!(window._busy&&Date.now()<window._busy))Q('#lock').click()});
 function cons(){try{return JSON.parse(localStorage.getItem('c_'+me.uid)||'[]')}catch(e){return[]}}
 function list(){
   var L=Q('#list');L.innerHTML='';
@@ -338,15 +368,17 @@ async function openChat(c){
     box.innerHTML='';
     items.forEach(function(x){
       if(x.t===null){if(!gone[x.d.id]){gone[x.d.id]=1;deleteDoc(x.d.ref)}return}
-      var mine=x.m.from==me.uid,el=document.createElement('div');el.className='m '+(mine?'me':'th');
+      var mine=x.m.from==me.uid,el=document.createElement('div');el.className='m '+(mine?'me':'th')+(x.m.keep?' kept':'');
       var n1=document.createElement('div');n1.className='nm';n1.textContent=mine?'You':peerName;
       var lp,t1=document.createElement('div');
       if(typeof x.t==='object'){if(x.t.k=='i'){var im=new Image();im.src=x.t.u;im.style.cssText='max-width:100%;border-radius:12px;display:block';t1.appendChild(im)}else{var au=document.createElement('audio');au.controls=true;au.src=x.t.u;au.style.width='210px';t1.appendChild(au)}}
-      else linkify(t1,x.t);
+      else{var tx=x.t,rq=null;if(tx.indexOf('{"r":')==0){try{var o=JSON.parse(tx);tx=o.x;rq=o.r}catch(e){}}
+        x.plain=tx;x.rq=rq;
+        if(rq){var q1=document.createElement('div');q1.className='qt';q1.textContent=rq.n+': '+String(rq.t).slice(0,80);t1.appendChild(q1)}
+        linkify(t1,tx);if(x.m.edited){var ed=document.createElement('span');ed.textContent=' (edited)';ed.style.cssText='font-size:10px;opacity:.6';t1.appendChild(ed)}}
       var t2=document.createElement('div');t2.className='tm'+(mine&&x.m.seen?' sn':'');t2.textContent=(x.m.keep?'\u{1F4CC} ':'')+ts(x.m.ts)+(mine?(x.m.seen?' \u2713\u2713':' \u2713'):'');
-      el.appendChild(n1);el.appendChild(t1);el.appendChild(t2);box.appendChild(el);
-      el.addEventListener('touchstart',function(){lp=setTimeout(function(){updateDoc(x.d.ref,{keep:!x.m.keep}).catch(function(){});if(navigator.vibrate)navigator.vibrate(15)},600)},{passive:true});
-      el.addEventListener('touchend',function(){clearTimeout(lp)});el.addEventListener('touchmove',function(){clearTimeout(lp)});
+      el.appendChild(n1);el.appendChild(t1);el.appendChild(t2);if(!hidSet()[x.d.id])box.appendChild(el);
+      attach(el,x,mine);
       if(!mine){
         if(!x.m.seen&&!marked[x.d.id]){marked[x.d.id]=1;updateDoc(x.d.ref,{seen:Date.now()}).catch(function(){})}
         var sec=+Q('#tmr').value;if(sec>0&&x.m.kind)sec=Math.max(sec,x.m.kind=='a'?300:30);
@@ -360,7 +392,7 @@ async function openChat(c){
 Q('#back').onclick=function(){if(unsub)unsub();if(unP)unP();window._peerUid=null;pane('home')};
 async function send(){
   var t=Q('#txt').value.trim();if(!t)return;
-  try{var key=await getKey();if(!key)return;Q('#txt').value='';var e=await enc(key,t);await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,iv:e.iv,ct:e.ct,ts:Date.now()})}catch(x){}
+  try{var key=await getKey();if(!key)return;Q('#txt').value='';var e=await enc(key,replyTo?JSON.stringify({r:replyTo,x:t}):t);clearReply();await addDoc(collection(db,'chats',window._cid,'messages'),{from:me.uid,iv:e.iv,ct:e.ct,ts:Date.now()})}catch(x){}
 }
 Q('#sendb').onclick=send;
 function fit(){var v=window.visualViewport;if(!v)return;var e=Q('#inside');e.style.bottom='auto';e.style.top=v.offsetTop+'px';e.style.height=v.height+'px';e.style.paddingBottom=(v.height<window.innerHeight-120)?'8px':'';window.scrollTo(0,0);var b=Q('#msgs');b.scrollTop=b.scrollHeight}
@@ -374,10 +406,10 @@ setInterval(function(){if(me&&!document.hidden&&document.getElementById('inside'
 function stat(){var e=Q('#st'),n=Date.now();if(!window._peerUid||!me||recOn)return;e.textContent=(pres.to==me.uid&&n-(pres.typing||0)<4000)?'typing\u2026':(n-(pres.last||0)<45000?'online':(pres.last?'last seen '+ts(pres.last):'offline'))}
 setInterval(stat,1500);
 Q('#txt').addEventListener('input',function(){var n=Date.now();if(n-lt>2000){lt=n;beat({to:window._peerUid,typing:n})}});
-Q('#chpin').onclick=function(){
+Q('#chpin').onclick=function(){busy();
   var cur=prompt('Current PIN');if(cur===null)return;if(cur!==localStorage.getItem('pin'))return alert('Wrong PIN');
   var n=prompt('New 4-digit PIN');if(!/^\d{4}$/.test(n||''))return alert('PIN must be 4 digits');
-  localStorage.setItem('pin',n);alert('PIN changed');
+  if(n===localStorage.getItem('pin2'))return alert('Choose a different PIN');localStorage.setItem('pin',n);alert('PIN changed');
 };
 Q('#panic').onclick=async function(){
   if(!confirm('Erase all messages, keys and settings on this phone?'))return;
@@ -391,7 +423,7 @@ var ICL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width
 Q('#gear').innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
 function lockIcons(x){document.querySelectorAll('.lk-ic').forEach(function(b){b.innerHTML=x})}
 lockIcons(IO);
-['lock2','lock3','lock4','lock5'].forEach(function(id){Q('#'+id).onclick=function(){lockIcons(ICL);setTimeout(function(){Q('#lock').click();lockIcons(IO)},220)}});
+['lock2','lock3','lock4'].forEach(function(id){Q('#'+id).onclick=function(){lockIcons(ICL);setTimeout(function(){Q('#lock').click();lockIcons(IO)},220)}});
 Q('#lock').addEventListener('click',function(){if(unsub)unsub();if(unP)unP();window._peerUid=null;Q('#msgs').innerHTML='';Q('#peer').textContent='';if(me)pane('home')});
 Q('#gear').onclick=function(){pane('set')};
 Q('#sback').onclick=function(){pane('home')};
@@ -411,7 +443,7 @@ async function sendMedia(kind,buf,mime){
 }
 function pickPhoto(f){if(!f)return;var img=new Image(),u=URL.createObjectURL(f);img.onload=function(){var r=Math.min(1,720/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(async function(b){await sendMedia('i',await b.arrayBuffer(),'image/jpeg')},'image/jpeg',.6)};img.src=u}
 async function micToggle(){
-  if(recOn){rec.stop();return}
+  busy();if(recOn){rec.stop();return}
   if(!window._key)return;
   try{
     var st=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -428,10 +460,45 @@ async function micToggle(){
 var SV='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
 Q('#photo').innerHTML=SV+'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 Q('#mic').innerHTML=SV+'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-Q('#photo').onclick=function(){Q('#pf').click()};
+Q('#photo').onclick=function(){busy();Q('#pf').click()};
 Q('#pf').onchange=function(){pickPhoto(this.files[0]);this.value=''};
 Q('#mic').onclick=micToggle;
 Q('#lock').addEventListener('click',function(){if(recOn&&rec){cancelRec=true;rec.stop()}});
+var replyTo=null;
+function busy(){window._busy=Date.now()+4000}
+function hidSet(){try{return JSON.parse(localStorage.getItem('hid_'+me.uid)||'{}')}catch(e){return{}}}
+function startReply(x,mine){replyTo={n:mine?'You':peerName,t:x.plain!=null?x.plain:(x.m.kind=='i'?'Photo':'Voice note')};Q('#rbt').textContent=replyTo.n+': '+String(replyTo.t).slice(0,60);Q('#rb').classList.add('on');Q('#txt').focus()}
+function clearReply(){replyTo=null;Q('#rb').classList.remove('on')}
+Q('#rbx').onclick=clearReply;
+function sheet(items){var m=Q('#menu');m.innerHTML='';var sh=document.createElement('div');sh.className='sheet';
+  items.forEach(function(it){var b=document.createElement('button');b.textContent=it[0];if(it[2])b.style.color='#d4908b';b.onclick=function(){m.classList.remove('on');if(it[1])it[1]()};sh.appendChild(b)});
+  m.appendChild(sh);m.classList.add('on');m.onclick=function(e){if(e.target==m)m.classList.remove('on')}}
+function copyT(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).catch(function(){})}else{var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}}
+async function editMsg(x){busy();var n=prompt('Edit message',x.plain);if(n===null||!n.trim()||n.trim()==x.plain)return;var key=await getKey();if(!key)return;n=n.trim();
+  var e=await enc(key,x.rq?JSON.stringify({r:x.rq,x:n}):n);updateDoc(x.d.ref,{iv:e.iv,ct:e.ct,edited:true}).catch(function(){})}
+function delMenu(x,mine,el){var it=[['Delete for me',function(){var h=hidSet();h[x.d.id]=1;localStorage.setItem('hid_'+me.uid,JSON.stringify(h));el.remove()},1]];
+  if(mine)it.push(['Delete for everyone',function(){deleteDoc(x.d.ref)},1]);it.push(['Cancel']);sheet(it)}
+function openMenu(x,mine,el){
+  var txt=x.plain,it=[['Reply',function(){startReply(x,mine)}],[x.m.keep?'Unsave':'Save',function(){updateDoc(x.d.ref,{keep:!x.m.keep}).catch(function(){})}]];
+  if(mine&&txt!=null)it.push(['Edit',function(){editMsg(x)}]);
+  if(txt!=null)it.push(['Copy',function(){copyT(txt)}]);
+  it.push(['Delete',function(){delMenu(x,mine,el)},1]);it.push(['Cancel']);sheet(it)}
+function attach(el,x,mine){
+  var sx=0,sy=0,dx=0,lp=null,sw=false;
+  el.addEventListener('touchstart',function(e){var t=e.touches[0];sx=t.clientX;sy=t.clientY;dx=0;sw=false;lp=setTimeout(function(){lp=null;if(navigator.vibrate)navigator.vibrate(15);openMenu(x,mine,el)},550)},{passive:true});
+  el.addEventListener('touchmove',function(e){var t=e.touches[0],dy=t.clientY-sy;dx=t.clientX-sx;if(Math.abs(dx)>10||Math.abs(dy)>10){clearTimeout(lp);lp=null}if(dx>0&&Math.abs(dy)<30){sw=true;el.style.transform='translateX('+Math.min(dx,70)+'px)'}},{passive:true});
+  var end=function(){clearTimeout(lp);el.style.transform='';if(sw&&dx>60)startReply(x,mine);sw=false};
+  el.addEventListener('touchend',end);el.addEventListener('touchcancel',function(){clearTimeout(lp);el.style.transform=''});
+}
+Q('#lock').addEventListener('click',function(){clearReply();Q('#menu').classList.remove('on')});
+Q('#dpin').onclick=function(){busy();
+  var cur=prompt('Enter your real PIN');if(cur===null)return;if(cur!==localStorage.getItem('pin'))return alert('Wrong PIN');
+  var n=prompt('New decoy PIN (4 digits). Leave empty to remove it.');if(n===null)return;
+  if(n===''){localStorage.removeItem('pin2');return alert('Decoy PIN removed')}
+  if(!/^\d{4}$/.test(n))return alert('PIN must be 4 digits');
+  if(n===cur)return alert('Decoy PIN must be different');
+  localStorage.setItem('pin2',n);alert('Decoy PIN set');
+};
 </script>
 </body>
 </html>
